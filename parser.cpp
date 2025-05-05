@@ -27,15 +27,15 @@ ValuePtr Parser::parse() {
         return parseTails();
     } 
     if (token->getType() == TokenType::QUOTE) {
-        return toList(std::vector<ValuePtr>{
+        return Value::toList(std::vector<ValuePtr>{
             std::make_shared<SymbolValue>("quote"), this->parse(), std::make_shared<NilValue>()});
     }
     if (token->getType() == TokenType::QUASIQUOTE) {
-        return toList(std::vector<ValuePtr>{
+        return Value::toList(std::vector<ValuePtr>{
             std::make_shared<SymbolValue>("quasiquote"), this->parse(), std::make_shared<NilValue>()});
     }
     if (token->getType() == TokenType::UNQUOTE) {
-        return toList(std::vector<ValuePtr>{
+        return Value::toList(std::vector<ValuePtr>{
             std::make_shared<SymbolValue>("unquote"), this->parse(), std::make_shared<NilValue>()});
     }
     throw SyntaxError("Unimplemented");
