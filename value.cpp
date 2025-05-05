@@ -3,6 +3,7 @@
 #include <iomanip>
 #include <sstream>
 #include <memory>
+#include <algorithm>
 
 std::string BooleanValue::toString(bool toDisplay) const {
     if (val == 0)
@@ -48,4 +49,14 @@ std::string PairValue::toString(bool toDisplay) const {
         return "(" + result + ")";
     else
         return result;    
+}
+
+ValuePtr toList(std::vector<ValuePtr> vec, bool toInit) {
+    if (toInit) std::reverse(vec.begin(), vec.end());
+    if (vec.size() == 0) {
+        return std::make_shared<NilValue>();
+    }
+    auto first = vec.back();
+    vec.pop_back();
+    return std::make_shared<PairValue>(first, toList(vec, false));
 }

@@ -3,6 +3,7 @@
 
 #include <string>
 #include <memory>
+#include <vector>
 
 class Value {
 public:
@@ -59,5 +60,7 @@ public:
     PairValue(ValuePtr t1, ValuePtr t2) : left{t1}, right{t2} {};
     std::string toString(bool toDisplay = 1) const;
 };
+
+ValuePtr toList(std::vector<ValuePtr>, bool toInit = 1);
 
 #endif
