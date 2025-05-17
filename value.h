@@ -39,6 +39,7 @@ public:
     NumericValue(double val) : val{val} {}
     std::string toString(bool toDisplay = 1) const;
     double getValue() const;
+    bool isInt() const;
 };
 
 class StringValue : public Value {

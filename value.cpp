@@ -24,6 +24,13 @@ double NumericValue::getValue() const {
     return this->val;
 }
 
+bool NumericValue::isInt() const {
+    if ((int)val == val) {
+        return true;
+    }
+    return false;
+}
+
 std::string StringValue::toString(bool toDisplay) const {
     std::ostringstream oss;
     oss << std::quoted(val);
