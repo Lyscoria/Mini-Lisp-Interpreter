@@ -14,13 +14,13 @@ public:
     Value() = default;
     virtual std::string toString(bool toDisplay = 1) const = 0;
     virtual ~Value() = default;
-    std::vector<ValuePtr> toVector();
     bool isSelfEvaluating();
     bool isNil();
-    bool isSymbol();
     bool isPair();
+    bool isNumber();
+    std::optional<double> asNumber();
+    bool isSymbol();
     std::optional<std::string> asSymbol();
-
     static ValuePtr toList(std::vector<ValuePtr>, bool toInit = 1);
 };
 
@@ -38,6 +38,7 @@ private:
 public:
     NumericValue(double val) : val{val} {}
     std::string toString(bool toDisplay = 1) const;
+    double getValue() const;
 };
 
 class StringValue : public Value {
@@ -63,12 +64,28 @@ public:
 };
 
 class PairValue : public Value {
-public:
+private:
     std::shared_ptr<Value> left;
     std::shared_ptr<Value> right;
 public:
     PairValue(ValuePtr t1, ValuePtr t2) : left{t1}, right{t2} {};
+    std::shared_ptr<Value> getRight() const;
     std::string toString(bool toDisplay = 1) const;
+    std::vector<ValuePtr> toVector();
 };
+
+using BuiltinFuncType = ValuePtr(const std::vector<ValuePtr>&);
+
+class BuiltinProcValue : public Value {
+private:
+    BuiltinFuncType* func;
+
+public:
+    BuiltinProcValue(BuiltinFuncType* func) : func {func} {}
+    std::string toString(bool toDisplay = 1) const;
+    ValuePtr call(const std::vector<ValuePtr>&);
+};
+
+
 
 #endif
