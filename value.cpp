@@ -24,13 +24,6 @@ double NumericValue::getValue() const {
     return this->val;
 }
 
-bool NumericValue::isInt() const {
-    if ((int)val == val) {
-        return true;
-    }
-    return false;
-}
-
 std::string StringValue::toString(bool toDisplay) const {
     std::ostringstream oss;
     oss << std::quoted(val);
@@ -63,8 +56,12 @@ std::string PairValue::toString(bool toDisplay) const {
         return result;    
 }
 
-std::shared_ptr<Value> PairValue::getRight() const {
+ValuePtr PairValue::getRight() const {
     return right;
+}
+
+ValuePtr PairValue::getLeft() const {
+    return left;
 }
 
 ValuePtr Value::toList(std::vector<ValuePtr> vec, bool toInit) {
@@ -108,6 +105,24 @@ bool Value::isNumber() {
     return false;
 }
 
+bool Value::isInt() {
+    if (!this->isNumber()) {
+        return false;
+    }
+    auto val = dynamic_cast<NumericValue*>(this)->getValue();
+    if ((int)val == val) {
+        return true;
+    }
+    return false;
+}
+
+bool Value::isBoolean() {
+    if (typeid(*this) == typeid(BooleanValue)) {
+        return true;
+    }
+    return false;
+}
+
 std::optional<double> Value::asNumber() {
     if (!this->isNumber()) {
         return std::nullopt;
@@ -130,6 +145,24 @@ std::optional<std::string> Value::asSymbol() {
     } else {
         return this->toString();
     }
+}
+
+bool Value::isString() {
+    if (typeid(*this) == typeid(StringValue)) {
+        return true;
+    }
+    return false;
+}
+
+std::string StringValue::getValue() const {
+    return val;
+}
+
+bool Value::isProcedure() {
+    if (typeid(*this) == typeid(BuiltinProcValue)) {
+        return true;
+    }
+    return false;
 }
 
 std::vector<ValuePtr> PairValue::toVector() {

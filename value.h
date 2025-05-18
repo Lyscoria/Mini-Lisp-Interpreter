@@ -15,12 +15,16 @@ public:
     virtual std::string toString(bool toDisplay = 1) const = 0;
     virtual ~Value() = default;
     bool isSelfEvaluating();
+    bool isBoolean();
     bool isNil();
     bool isPair();
     bool isNumber();
     std::optional<double> asNumber();
+    bool isInt();
     bool isSymbol();
     std::optional<std::string> asSymbol();
+    bool isString();
+    bool isProcedure();
     static ValuePtr toList(std::vector<ValuePtr>, bool toInit = 1);
 };
 
@@ -39,7 +43,6 @@ public:
     NumericValue(double val) : val{val} {}
     std::string toString(bool toDisplay = 1) const;
     double getValue() const;
-    bool isInt() const;
 };
 
 class StringValue : public Value {
@@ -48,6 +51,7 @@ private:
 public:
     StringValue(std::string val) : val {val} {}
     std::string toString(bool toDisplay = 1) const;
+    std::string getValue() const;
 };
 
 class NilValue : public Value {
@@ -71,6 +75,7 @@ private:
 public:
     PairValue(ValuePtr t1, ValuePtr t2) : left{t1}, right{t2} {};
     std::shared_ptr<Value> getRight() const;
+    std::shared_ptr<Value> getLeft() const;
     std::string toString(bool toDisplay = 1) const;
     std::vector<ValuePtr> toVector();
 };
