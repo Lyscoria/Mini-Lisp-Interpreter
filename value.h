@@ -6,6 +6,8 @@
 #include <vector>
 #include <optional>
 
+class EvalEnv;
+
 class Value;
 using ValuePtr = std::shared_ptr<Value>;
 
@@ -97,10 +99,14 @@ class LambdaValue : public Value {
 private:
     std::vector<std::string> params;
     std::vector<ValuePtr> body;
+    std::shared_ptr<EvalEnv> env;
+
 public:
-    LambdaValue(std::vector<std::string> params, std::vector<ValuePtr> body)
-        : params{params}, body{body} {}
+    LambdaValue(std::vector<std::string> params, std::vector<ValuePtr> body,
+                std::shared_ptr<EvalEnv> env)
+        : params{params}, body{body}, env{env} {}
     std::string toString(bool toDisplay = 1) const;
+    ValuePtr apply(const std::vector<ValuePtr>& args);
 };
 
 #endif

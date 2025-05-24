@@ -1,27 +1,50 @@
 #ifndef EVAL_ENV_H
 #define EVAL_ENV_H
 
-#include "./value.h"
 #include "./error.h"
 #include "./builtins.h"
 #include <unordered_map>
 #include <algorithm>
 #include <iterator>
 
-class EvalEnv {
-private:
-    std::unordered_map<std::string, ValuePtr> symbolTable;
+class Value;
+using ValuePtr = std::shared_ptr<Value>;
 
-public:
+class EvalEnv : public std::enable_shared_from_this<EvalEnv> {
+private:
+    std::unordered_map<std::string, ValuePtr> SYMBOLS;
+    std::shared_ptr<EvalEnv> parent = nullptr;
     EvalEnv() {
         for (auto proc : BUILTIN_PROCEDURES) {
-            symbolTable.insert(std::make_pair(proc.first, std::make_shared<BuiltinProcValue>(proc.second)));
+            SYMBOLS.insert(std::make_pair(
+                proc.first, std::make_shared<BuiltinProcValue>(proc.second)));
         }
+    }
+    EvalEnv(std::unordered_map<std::string, ValuePtr> SYMBOLS_,
+            std::shared_ptr<EvalEnv> parent_) {
+        SYMBOLS = SYMBOLS_;
+        parent = parent_;
+    }
+
+public:
+    static std::shared_ptr<EvalEnv> create() {
+        return std::shared_ptr<EvalEnv>(new EvalEnv());
+    }
+    static std::shared_ptr<EvalEnv> create(
+        std::unordered_map<std::string, ValuePtr> SYMBOLS_,
+        std::shared_ptr<EvalEnv> parent_) {
+        return std::shared_ptr<EvalEnv>(new EvalEnv(SYMBOLS_, parent_));
+    }
+    std::shared_ptr<EvalEnv> get_shared_this() {
+        return shared_from_this();
     }
     std::vector<ValuePtr> evalList(ValuePtr expr);
     ValuePtr apply(ValuePtr proc, std::vector<ValuePtr> args);
     ValuePtr eval(ValuePtr expr);
-    void add(std::string name, ValuePtr arg);
+    void defineBinding(std::string name, ValuePtr arg);
+    ValuePtr lookupBinding(std::string name);
+    std::shared_ptr<EvalEnv> createChild(const std::vector<std::string>& params, 
+        const std::vector<ValuePtr>& args);
 };
 
 #endif

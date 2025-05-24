@@ -5,6 +5,7 @@
 #include <memory>
 #include <algorithm>
 #include <ranges>
+#include "./eval_env.h"
 
 std::string BooleanValue::toString(bool toDisplay) const {
     if (val == 0)
@@ -196,4 +197,12 @@ ValuePtr BuiltinProcValue::call(const std::vector<ValuePtr>& v) {
 
 std::string LambdaValue::toString(bool toDisplay) const {
     return "#<procedure>";
+}
+
+ValuePtr LambdaValue::apply(const std::vector<ValuePtr>& args) {
+    std::shared_ptr<EvalEnv> newEnv = env->createChild(params, args);
+    for (auto expr : body) {
+        newEnv->eval(expr);
+    }
+    return newEnv->eval(*(body.end() - 1));
 }

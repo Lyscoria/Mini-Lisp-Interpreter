@@ -12,7 +12,7 @@ std::unordered_map<std::string, SpecialFormType> SPECIAL_FORMS{
 ValuePtr defineForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
     //TODO: need fix
     if (auto name = args[0]->asSymbol()) {
-        env.add(*name, env.eval(args[1]));
+        env.defineBinding(*name, env.eval(args[1]));
         return std::make_shared<NilValue>();
     } else if (args[0]->isPair()) {
         auto name = dynamic_cast<SymbolValue*>(
@@ -22,8 +22,10 @@ ValuePtr defineForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
         std::vector<ValuePtr> newArgs;
         newArgs.push_back(params);
         newArgs.insert(newArgs.end(), args.begin() + 1, args.end());
-        env.add(*name, lambdaForm(newArgs, env));
+        env.defineBinding(*name, lambdaForm(newArgs, env));
         return std::make_shared<NilValue>();
+    } else {
+        throw LispError("Not Implement");
     }
 }
 
@@ -79,5 +81,5 @@ ValuePtr lambdaForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
     for (auto ptr : paramPtrs) {
         params.push_back(*ptr->asSymbol());
     }
-    return std::make_shared<LambdaValue>(params, std::vector<ValuePtr>(args.begin() + 1, args.end()));
+    return std::make_shared<LambdaValue>(params, std::vector<ValuePtr>(args.begin() + 1, args.end()), env.shared_from_this());
 }
