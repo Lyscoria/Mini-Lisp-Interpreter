@@ -44,24 +44,24 @@ std::string SymbolValue::toString(bool toDisplay) const {
 
 std::string PairValue::toString(bool toDisplay) const {
     std::string result;
-    result += left->toString(0);
-    if (typeid(*right) != typeid(NilValue) &&
-        typeid(*right) != typeid(PairValue))
-        result += (" . " + right->toString(0));
-    else if (typeid(*right) == typeid(PairValue))
-        result += (" " + right->toString(0));
+    result += car->toString(0);
+    if (typeid(*cdr) != typeid(NilValue) &&
+        typeid(*cdr) != typeid(PairValue))
+        result += (" . " + cdr->toString(0));
+    else if (typeid(*cdr) == typeid(PairValue))
+        result += (" " + cdr->toString(0));
     if (toDisplay)
         return "(" + result + ")";
     else
         return result;    
 }
 
-ValuePtr PairValue::getRight() const {
-    return right;
+ValuePtr PairValue::getCdr() const {
+    return cdr;
 }
 
-ValuePtr PairValue::getLeft() const {
-    return left;
+ValuePtr PairValue::getCar() const {
+    return car;
 }
 
 ValuePtr Value::toList(std::vector<ValuePtr> vec, bool toInit) {
@@ -123,6 +123,10 @@ bool Value::isBoolean() {
     return false;
 }
 
+bool BooleanValue::getValue() const {
+    return val;
+}
+
 std::optional<double> Value::asNumber() {
     if (!this->isNumber()) {
         return std::nullopt;
@@ -169,12 +173,12 @@ std::vector<ValuePtr> PairValue::toVector() {
     std::vector<ValuePtr> result;
     PairValue* cur_ptr = this;
     while (cur_ptr != nullptr) {
-        result.push_back(cur_ptr->left);
-        if (auto next_ptr = dynamic_cast<PairValue*>(cur_ptr->right.get())) {
+        result.push_back(cur_ptr->car);
+        if (auto next_ptr = dynamic_cast<PairValue*>(cur_ptr->cdr.get())) {
             cur_ptr = next_ptr;
         } else {
-            if (!cur_ptr->right->isNil()) {
-                result.push_back(cur_ptr->right);
+            if (!cur_ptr->cdr->isNil()) {
+                result.push_back(cur_ptr->cdr);
             }
             break;
         }
@@ -188,4 +192,8 @@ std::string BuiltinProcValue::toString(bool toDisplay) const {
 
 ValuePtr BuiltinProcValue::call(const std::vector<ValuePtr>& v) {
     return func(v);
+}
+
+std::string LambdaValue::toString(bool toDisplay) const {
+    return "#<procedure>";
 }

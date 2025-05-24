@@ -1,7 +1,5 @@
 #include "./eval_env.h"
-#include <algorithm>
-#include <iterator>
-using namespace std::literals;
+#include "./forms.h"
 
 ValuePtr EvalEnv::eval(ValuePtr expr) {
     if (expr->isSelfEvaluating()) {
@@ -19,20 +17,19 @@ ValuePtr EvalEnv::eval(ValuePtr expr) {
         }
     }
     if (expr->isPair()) {
-        auto ptr = dynamic_cast<PairValue*>(expr.get());
-        std::vector<ValuePtr> v = ptr->toVector();
-        if (v[0]->asSymbol() == "define"s) {
-            if (auto name = v[1]->asSymbol()) {
-                symbolTable[*name] = eval(v[2]);
-                return std::make_shared<NilValue>();
+        auto pairExpr = dynamic_cast<PairValue*>(expr.get());
+        auto exprVector = pairExpr->toVector();
+        if (exprVector[0]->asSymbol()) {
+            auto name = exprVector[0]->asSymbol();
+            if (SPECIAL_FORMS.find(*name) != SPECIAL_FORMS.end()) {
+                return SPECIAL_FORMS[*name](std::vector(exprVector.begin() + 1, exprVector.end()), *this);
             } else {
-                throw LispError("Malformed define.");
+                ValuePtr proc = this->eval(exprVector[0]);
+                std::vector<ValuePtr> args =
+                    evalList(dynamic_cast<PairValue*>(expr.get())->getCdr());
+                return this->apply(proc, args);
             }
         }
-        ValuePtr proc = this->eval(v[0]);
-        std::vector<ValuePtr> args =
-            evalList(dynamic_cast<PairValue*>(expr.get())->getRight());
-        return this->apply(proc, args);
     }
 }
 
@@ -50,4 +47,8 @@ ValuePtr EvalEnv::apply(ValuePtr proc, std::vector<ValuePtr> args) {
     } else {
         throw LispError("Unimplemented");
     }
+}
+
+void EvalEnv::add(std::string name, ValuePtr arg) {
+    symbolTable[name] = arg;
 }

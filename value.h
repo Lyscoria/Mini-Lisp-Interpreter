@@ -34,6 +34,7 @@ private:
 public:
     BooleanValue(bool val) : val{val} {}
     std::string toString(bool toDisplay = 1) const;
+    bool getValue() const;
 };
 
 class NumericValue : public Value {
@@ -70,12 +71,12 @@ public:
 
 class PairValue : public Value {
 private:
-    std::shared_ptr<Value> left;
-    std::shared_ptr<Value> right;
+    std::shared_ptr<Value> car;
+    std::shared_ptr<Value> cdr;
 public:
-    PairValue(ValuePtr t1, ValuePtr t2) : left{t1}, right{t2} {};
-    std::shared_ptr<Value> getRight() const;
-    std::shared_ptr<Value> getLeft() const;
+    PairValue(ValuePtr t1, ValuePtr t2) : car{t1}, cdr{t2} {};
+    std::shared_ptr<Value> getCdr() const;
+    std::shared_ptr<Value> getCar() const;
     std::string toString(bool toDisplay = 1) const;
     std::vector<ValuePtr> toVector();
 };
@@ -92,6 +93,14 @@ public:
     ValuePtr call(const std::vector<ValuePtr>&);
 };
 
-
+class LambdaValue : public Value {
+private:
+    std::vector<std::string> params;
+    std::vector<ValuePtr> body;
+public:
+    LambdaValue(std::vector<std::string> params, std::vector<ValuePtr> body)
+        : params{params}, body{body} {}
+    std::string toString(bool toDisplay = 1) const;
+};
 
 #endif

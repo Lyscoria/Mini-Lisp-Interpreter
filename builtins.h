@@ -6,6 +6,8 @@
 #include <unordered_map>
 #include <string>
 
+extern const std::unordered_map<std::string, BuiltinFuncType*> BUILTIN_PROCEDURES;
+
 ValuePtr display(const std::vector<ValuePtr>& params);
 ValuePtr exit_new(const std::vector<ValuePtr>& params);
 ValuePtr newline(const std::vector<ValuePtr>& params);
@@ -47,7 +49,5 @@ ValuePtr greater_than_or_equal(const std::vector<ValuePtr>& params);
 ValuePtr even(const std::vector<ValuePtr>& params);
 ValuePtr odd(const std::vector<ValuePtr>& params);
 ValuePtr zero(const std::vector<ValuePtr>& params);
-
-extern std::unordered_map<std::string, BuiltinFuncType*> builtinFuncList;
 
 #endif

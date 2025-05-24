@@ -3,7 +3,7 @@
 #include <cmath>
 #include <vector>
 
-std::unordered_map<std::string, BuiltinFuncType*> builtinFuncList = {
+const std::unordered_map<std::string, BuiltinFuncType*> BUILTIN_PROCEDURES = {
     std::make_pair("print", print),
     std::make_pair("display", display),
     std::make_pair("exit", exit_new),
@@ -444,7 +444,7 @@ ValuePtr car(const std::vector<ValuePtr>& params) {
     if (!params[0]->isPair()) {
         throw LispError("\"car\" should receive a pair.");
     }
-    return dynamic_cast<PairValue*>(params[0].get())->getLeft();
+    return dynamic_cast<PairValue*>(params[0].get())->getCar();
 }
 
 ValuePtr cdr(const std::vector<ValuePtr>& params) {
@@ -454,7 +454,7 @@ ValuePtr cdr(const std::vector<ValuePtr>& params) {
     if (!params[0]->isPair()) {
         throw LispError("\"cdr\" should receive a pair.");
     }
-    return dynamic_cast<PairValue*>(params[0].get())->getRight();
+    return dynamic_cast<PairValue*>(params[0].get())->getCdr();
 }
 
 ValuePtr cons(const std::vector<ValuePtr>& params) {
@@ -465,7 +465,16 @@ ValuePtr cons(const std::vector<ValuePtr>& params) {
 }
 
 ValuePtr length(const std::vector<ValuePtr>& params) {
-    return std::make_shared<NumericValue>(params.size());
+    if (params.size() != 1) {
+        throw LispError("\"length\" should receive one param.");
+    }
+    if (!params[0]->isPair() && !params[0]->isNil()) {
+        throw LispError("\"length\" should receive a list.");
+    }
+    if (params[0]->isNil()) {
+        return std::make_shared<NumericValue>(0);
+    }
+    return std::make_shared<NumericValue>(dynamic_cast<PairValue*>(params[0].get())->toVector().size());
 }
 
 ValuePtr list_new(const std::vector<ValuePtr>& params) {

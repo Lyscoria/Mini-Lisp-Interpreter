@@ -22,7 +22,7 @@ struct TestCtx {
 EvalEnv env;
 
 int main() {
-    RJSJ_TEST(TestCtx, Lv2, Lv3, Lv4);
+    RJSJ_TEST(TestCtx, Lv2, Lv3, Lv4, Lv5, Lv5Extra);
     while (true) {
         try {
             std::cout << ">>> " ;
