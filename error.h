@@ -44,4 +44,9 @@ public:
     }
 };
 
+void checkArgNumber(int min, int max, const std::vector<ValuePtr>& params);
+
+void checkArgType(const std::vector<std::string> types,
+                  const std::vector<ValuePtr>& params);
+
 #endif

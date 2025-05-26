@@ -1,5 +1,6 @@
 #include "./builtins.h"
 #include "./eval_env.h"
+#include "./forms.h"
 #include <iostream>
 #include <cmath>
 #include <vector>
@@ -54,23 +55,6 @@ const std::unordered_map<std::string, BuiltinFuncType> BUILTIN_PROCEDURES = {
     std::make_pair("odd?", odd),
     std::make_pair("zero?", zero),
 };
-
-void checkArgNumber(int min, int max, const std::vector<ValuePtr>& params) {
-    if (params.size() < min || params.size() > max) {
-        throw ArgNumberError(min, max, params.size());
-    }
-    return;
-}
-
-void checkArgType(const std::vector<std::string> types,
-                  const std::vector<ValuePtr>& params) {
-    for (int idx = 0; idx < types.size(); idx++) {
-        if (params[idx]->getType() != types[idx]) {
-            throw ArgTypeError(types[idx], params[idx]->getType());
-        }
-    }
-    return;
-}
 
 ValuePtr add(const std::vector<ValuePtr>& params, EvalEnv& env) {
     double result = std::accumulate(params.begin(), params.end(), 0.0, 
@@ -443,7 +427,8 @@ ValuePtr apply(const std::vector<ValuePtr>& params, EvalEnv& env) {
 }
 
 ValuePtr displayln(const std::vector<ValuePtr>& params, EvalEnv& env) {
-    //TODO!
+    display(params, env);
+    newline({}, env);
     return std::make_shared<NilValue>();
 }
 

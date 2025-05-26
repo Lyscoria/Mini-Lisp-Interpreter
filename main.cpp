@@ -22,7 +22,7 @@ struct TestCtx {
 std::shared_ptr<EvalEnv> env = EvalEnv::create();
 
 int main() {
-    RJSJ_TEST(TestCtx, Lv7Lib);
+    RJSJ_TEST(TestCtx, Lv2, Lv3, Lv4, Lv5, Lv5Extra, Lv6, Lv7, Lv7Lib, Sicp);
     while (true) {
         try {
             std::cout << ">>> " ;
