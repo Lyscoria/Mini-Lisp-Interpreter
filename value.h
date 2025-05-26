@@ -7,54 +7,58 @@
 #include <optional>
 
 class EvalEnv;
-
 class Value;
 using ValuePtr = std::shared_ptr<Value>;
 
 class Value : public std::enable_shared_from_this<Value> {
 public:
     Value() = default;
-    virtual std::string toString(bool toDisplay = 1) const = 0;
-    virtual ~Value() = default;
-    bool isSelfEvaluating();
-    bool isBoolean();
-    bool isNil();
-    bool isPair();
-    bool isNumber();
-    std::optional<double> asNumber();
+    bool isBoolean() const;
+    bool isNumber() const;
+    bool isSymbol() const;
+    bool isString() const;
+    bool isNil() const;
+    bool isPair() const;
+    bool isProcedure() const;
+    bool isSelfEvaluating() const;
     bool isInt();
-    bool isSymbol();
+    bool isList();
+    std::optional<bool> asBoolean();
+    std::optional<double> asNumber();
     std::optional<std::string> asSymbol();
-    bool isString();
-    bool isProcedure();
+    std::optional<std::string> asString();
+    virtual std::string toString(bool toDisplay = 1) const = 0;
     static ValuePtr toList(std::vector<ValuePtr>, bool toInit = 1);
+    std::vector<ValuePtr> toVector();
+    std::string getType() const;
+    virtual ~Value() = default;
 };
 
 class BooleanValue : public Value {
 private:
-    bool val;
+    bool value;
 public:
-    BooleanValue(bool val) : val{val} {}
-    std::string toString(bool toDisplay = 1) const;
+    BooleanValue(bool value) : value{value} {}
     bool getValue() const;
+    std::string toString(bool toDisplay = 1) const;
 };
 
 class NumericValue : public Value {
 private:
-    double val;
+    double value;
 public:
-    NumericValue(double val) : val{val} {}
-    std::string toString(bool toDisplay = 1) const;
+    NumericValue(double value) : value{value} {}
     double getValue() const;
+    std::string toString(bool toDisplay = 1) const;
 };
 
 class StringValue : public Value {
 private:
-    std::string val;
+    std::string value;
 public:
-    StringValue(std::string val) : val {val} {}
-    std::string toString(bool toDisplay = 1) const;
+    StringValue(std::string value) : value {value} {}
     std::string getValue() const;
+    std::string toString(bool toDisplay = 1) const;
 };
 
 class NilValue : public Value {
@@ -65,9 +69,10 @@ public:
 
 class SymbolValue : public Value {
 private:
-    std::string val;
+    std::string value;
 public:
-    SymbolValue(std::string val) : val{val} {}
+    SymbolValue(std::string value) : value{value} {}
+    std::string getValue() const;
     std::string toString(bool toDisplay = 1) const;
 };
 
@@ -76,23 +81,21 @@ private:
     std::shared_ptr<Value> car;
     std::shared_ptr<Value> cdr;
 public:
-    PairValue(ValuePtr t1, ValuePtr t2) : car{t1}, cdr{t2} {};
+    PairValue(ValuePtr car, ValuePtr cdr) : car{car}, cdr{cdr} {};
     std::shared_ptr<Value> getCdr() const;
     std::shared_ptr<Value> getCar() const;
     std::string toString(bool toDisplay = 1) const;
-    std::vector<ValuePtr> toVector();
 };
 
-using BuiltinFuncType = ValuePtr(const std::vector<ValuePtr>&);
-
+using BuiltinFuncType = ValuePtr(*)(const std::vector<ValuePtr>&, EvalEnv& env);
 class BuiltinProcValue : public Value {
 private:
-    BuiltinFuncType* func;
+    BuiltinFuncType func;
 
 public:
-    BuiltinProcValue(BuiltinFuncType* func) : func {func} {}
+    BuiltinProcValue(BuiltinFuncType func) : func {func} {}
     std::string toString(bool toDisplay = 1) const;
-    ValuePtr call(const std::vector<ValuePtr>&);
+    ValuePtr call(const std::vector<ValuePtr>&, EvalEnv& env);
 };
 
 class LambdaValue : public Value {

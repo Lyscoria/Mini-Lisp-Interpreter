@@ -17,7 +17,7 @@ ValuePtr EvalEnv::eval(ValuePtr expr) {
         auto exprVector = pairExpr->toVector();
         auto name = exprVector[0]->asSymbol();
         if (name != std::nullopt && SPECIAL_FORMS.find(*name) != SPECIAL_FORMS.end()) {
-            return SPECIAL_FORMS[*name](std::vector(exprVector.begin() + 1, exprVector.end()), *this);
+            return SPECIAL_FORMS[*name](pairExpr->getCdr()->toVector(), *this);
         } else {
             ValuePtr proc = this->eval(exprVector[0]);
             std::vector<ValuePtr> args =
@@ -30,7 +30,7 @@ ValuePtr EvalEnv::eval(ValuePtr expr) {
 
 std::vector<ValuePtr> EvalEnv::evalList(ValuePtr expr) {
     std::vector<ValuePtr> result;
-    std::ranges::transform(dynamic_cast<PairValue*>(expr.get())->toVector(), 
+    std::ranges::transform(expr->toVector(), 
                            std::back_inserter(result),
                            [this](ValuePtr v) { return this->eval(v); });
     return result;
@@ -38,7 +38,7 @@ std::vector<ValuePtr> EvalEnv::evalList(ValuePtr expr) {
 
 ValuePtr EvalEnv::apply(ValuePtr proc, std::vector<ValuePtr> args) {
     if (typeid(*proc) == typeid(BuiltinProcValue)) {
-        return dynamic_cast<BuiltinProcValue*>(proc.get())->call(args);
+        return dynamic_cast<BuiltinProcValue*>(proc.get())->call(args, *this);
     } else {
         return dynamic_cast<LambdaValue*>(proc.get())->apply(args);
     }

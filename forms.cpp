@@ -15,18 +15,16 @@ ValuePtr defineForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
         env.defineBinding(*name, env.eval(args[1]));
         return std::make_shared<NilValue>();
     } else if (args[0]->isPair()) {
-        auto name = dynamic_cast<SymbolValue*>(
-                        dynamic_cast<PairValue*>(args[0].get())->getCar().get())
-                        ->asSymbol();
+        auto name = dynamic_cast<PairValue*>(args[0].get())->getCar().get()->asSymbol();
         auto params = dynamic_cast<PairValue*>(args[0].get())->getCdr();
-        std::vector<ValuePtr> newArgs;
-        newArgs.push_back(params);
-        newArgs.insert(newArgs.end(), args.begin() + 1, args.end());
-        env.defineBinding(*name, lambdaForm(newArgs, env));
+        std::vector<ValuePtr> packedArgs;
+        packedArgs.push_back(params);
+        packedArgs.insert(packedArgs.end(), args.begin() + 1, args.end());
+        env.defineBinding(*name, lambdaForm(packedArgs, env));
         return std::make_shared<NilValue>();
     } else {
         throw LispError("Not Implement");
-    }
+    } //(define (f x y ...) a b c d ...)
 }
 
 ValuePtr quoteForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
@@ -37,8 +35,7 @@ ValuePtr ifForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
     if (args.size() != 3) {
         throw SyntaxError("\'if\' requires 3 arguments.");
     }
-    if (dynamic_cast<BooleanValue*>(env.eval(args[0]).get()) != nullptr && 
-        dynamic_cast<BooleanValue*>(env.eval(args[0]).get())->getValue() == false) {
+    if (env.eval(args[0])->asBoolean() == false) {
         return env.eval(args[2]);        
     } else {
         return env.eval(args[1]);
@@ -50,8 +47,7 @@ ValuePtr andForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
         return std::make_shared<BooleanValue>(true);
     }
     for (auto arg : args) {
-        if (env.eval(arg)->isBoolean() == true && 
-            dynamic_cast<BooleanValue*>(env.eval(arg).get())->getValue() == false) {
+        if (env.eval(arg)->asBoolean() == false) {
             return std::make_shared<BooleanValue>(false);
         }
     }
@@ -63,8 +59,7 @@ ValuePtr orForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
         return std::make_shared<BooleanValue>(false);
     }
     for (auto arg : args) {
-        if (env.eval(arg)->isBoolean() != true || dynamic_cast<BooleanValue*>(
-            env.eval(arg).get())->getValue() != false) {
+        if (env.eval(arg)->asBoolean() != false) {
             return env.eval(arg);
         }
     }
@@ -77,9 +72,7 @@ ValuePtr lambdaForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
         throw SyntaxError("\'lambda\' requires at least 2 arguments.");
     }
     std::vector<std::string> params;
-    std::vector<ValuePtr> paramPtrs = dynamic_cast<PairValue*>(args[0].get())->toVector();
-    for (auto ptr : paramPtrs) {
-        params.push_back(*ptr->asSymbol());
-    }
+    std::ranges::transform(args[0]->toVector(), std::back_inserter(params),
+                           [](ValuePtr ptr) { return *ptr->asSymbol(); });
     return std::make_shared<LambdaValue>(params, std::vector<ValuePtr>(args.begin() + 1, args.end()), env.shared_from_this());
 }

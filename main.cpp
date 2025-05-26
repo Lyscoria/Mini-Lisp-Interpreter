@@ -5,7 +5,7 @@
 #include "./value.h"
 #include "./parser.h"
 #include "./eval_env.h"
-
+#define RJSJ_TEST_NO_EXIT
 #include "rjsj_test.hpp"
 
 struct TestCtx {
@@ -22,7 +22,7 @@ struct TestCtx {
 std::shared_ptr<EvalEnv> env = EvalEnv::create();
 
 int main() {
-    RJSJ_TEST(TestCtx, Lv2, Lv3, Lv4, Lv5, Lv6);
+    RJSJ_TEST(TestCtx, Lv7Lib);
     while (true) {
         try {
             std::cout << ">>> " ;

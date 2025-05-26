@@ -1,38 +1,50 @@
-#include ".\builtins.h"
+#include "./builtins.h"
+#include "./eval_env.h"
 #include <iostream>
 #include <cmath>
 #include <vector>
+#include <numeric>
 
-const std::unordered_map<std::string, BuiltinFuncType*> BUILTIN_PROCEDURES = {
+const std::unordered_map<std::string, BuiltinFuncType> BUILTIN_PROCEDURES = {
+    std::make_pair("apply", apply), 
     std::make_pair("print", print),
-    std::make_pair("display", display),
-    std::make_pair("exit", exit_new),
+    std::make_pair("display", display), 
+    std::make_pair("displayln", displayln),
+    std::make_pair("error", error), 
+    std::make_pair("exit", exit_lisp),
+    std::make_pair("eval", eval),
     std::make_pair("newline", newline),
-    std::make_pair("atom?", atom),
-    std::make_pair("boolean?", boolean),
-    std::make_pair("integer?", integer),
-    std::make_pair("list?", list),
-    std::make_pair("number?", number),
-    std::make_pair("pair?", pair),
-    std::make_pair("null?", null),
-    std::make_pair("procedure?", procedure),
-    std::make_pair("string?", string),
-    std::make_pair("symbol?", symbol),
+    std::make_pair("atom?", isatom),
+    std::make_pair("boolean?", isboolean),
+    std::make_pair("integer?", isinteger),
+    std::make_pair("list?", islist),
+    std::make_pair("number?", isnumber),
+    std::make_pair("pair?", ispair),
+    std::make_pair("null?", isnull),
+    std::make_pair("procedure?", isprocedure),
+    std::make_pair("string?", isstring),
+    std::make_pair("symbol?", issymbol),
     std::make_pair("car", car),
     std::make_pair("cdr", cdr),
     std::make_pair("cons", cons),
     std::make_pair("length", length),
-    std::make_pair("list", list_new),
+    std::make_pair("list", list),
     std::make_pair("append", append),
+    std::make_pair("map", map),
+    std::make_pair("filter", filter),
+    std::make_pair("reduce", reduce),
     std::make_pair("+", add), 
     std::make_pair("*", multiply),
     std::make_pair("-", minus), 
     std::make_pair("/", divide),
-    std::make_pair("abs", abs_new), 
+    std::make_pair("abs", abs_lisp), 
     std::make_pair("expt", expt),
     std::make_pair("quotient", quotient),
-    std::make_pair("remainder", remainder_new),
+    std::make_pair("remainder", remainder_lisp),
     std::make_pair("modulo", modulo),
+    std::make_pair("eq?", isEq),
+    std::make_pair("equal?", isEqual),
+    std::make_pair("not", isNot),
     std::make_pair("=", equal),
     std::make_pair("<", less_than), 
     std::make_pair(">", greater_than), 
@@ -43,66 +55,71 @@ const std::unordered_map<std::string, BuiltinFuncType*> BUILTIN_PROCEDURES = {
     std::make_pair("zero?", zero),
 };
 
-ValuePtr add(const std::vector<ValuePtr>& params) {
-    auto result = 0.0;
-    for (const auto& i : params) {
-        if (!i->isNumber()) {
-            throw LispError("Cannot add a non-numeric value.");
-        }
-        result += i->asNumber().value();
+void checkArgNumber(int min, int max, const std::vector<ValuePtr>& params) {
+    if (params.size() < min || params.size() > max) {
+        throw ArgNumberError(min, max, params.size());
     }
+    return;
+}
+
+void checkArgType(const std::vector<std::string> types,
+                  const std::vector<ValuePtr>& params) {
+    for (int idx = 0; idx < types.size(); idx++) {
+        if (params[idx]->getType() != types[idx]) {
+            throw ArgTypeError(types[idx], params[idx]->getType());
+        }
+    }
+    return;
+}
+
+ValuePtr add(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    double result = std::accumulate(params.begin(), params.end(), 0.0, 
+        [](double acc, const auto& param) {
+            if (!param->isNumber()) {
+                throw ArgTypeError("Number", param->getType());
+            }
+            return acc + param->asNumber().value();
+        });
     return std::make_shared<NumericValue>(result);
 }
 
-ValuePtr multiply(const std::vector<ValuePtr>& params) {
-    auto result = 1.0;
-    for (const auto& i : params) {
-        if (!i->isNumber()) {
-            throw LispError("Cannot multiply a non-numeric value.");
-        }
-        result *= i->asNumber().value();
-    }
+ValuePtr multiply(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    double result = std::accumulate(
+        params.begin(), params.end(), 1.0, [](double acc, const auto& param) {
+            if (!param->isNumber()) {
+                throw ArgTypeError("Number", param->getType());
+            }
+            return acc * param->asNumber().value();
+        });
     return std::make_shared<NumericValue>(result);
 }
 
-ValuePtr minus(const std::vector<ValuePtr>& params) {
+ValuePtr minus(const std::vector<ValuePtr>& params, EvalEnv& env) {
     auto result = 0.0;
-    if (params.size() != 1 && params.size() != 2) {
-        throw LispError("\"-\" should receive one or two params.");
-    }
+    checkArgNumber(1, 2, params);
     if (params.size() == 1) {
-        if (!params[0]->isNumber()) {
-            throw LispError("Cannot minus a non-numeric value.");
-        }
+        checkArgType({"Number"}, params);
         result = -params[0]->asNumber().value();
     }
     if (params.size() == 2) {
-        if (!params[0]->isNumber() || !params[1]->isNumber()) {
-            throw LispError("Cannot minus between non-numeric values.");
-        }
+        checkArgType({"Number", "Number"}, params);
         result = params[0]->asNumber().value() - params[1]->asNumber().value();
     }
     return std::make_shared<NumericValue>(result);
 }
 
-ValuePtr divide(const std::vector<ValuePtr>& params) {
+ValuePtr divide(const std::vector<ValuePtr>& params, EvalEnv& env) {
     auto result = 0.0;
-    if (params.size() != 1 && params.size() != 2) {
-        throw LispError("\"/\" should receive one or two params.");
-    }
+    checkArgNumber(1, 2, params);
     if (params.size() == 1) {
-        if (!params[0]->isNumber()) {
-            throw LispError("Cannot divide a non-numeric value.");
-        }
+        checkArgType({"Number"}, params);
         if (params[0]->asNumber().value() == 0) {
-            throw LispError("Cannot divided by zero.");
+            throw LispError("Division by zero.");
         }
         result = 1 / params[0]->asNumber().value();
     }
     if (params.size() == 2) {
-        if (!params[0]->isNumber() || !params[1]->isNumber()) {
-            throw LispError("Cannot divide between non-numeric values.");
-        }
+        checkArgType({"Number", "Number"}, params);
         if (params[1]->asNumber().value() == 0) {
             throw LispError("Cannot divided by zero.");
         }
@@ -111,21 +128,15 @@ ValuePtr divide(const std::vector<ValuePtr>& params) {
     return std::make_shared<NumericValue>(result);
 }
 
-ValuePtr print(const std::vector<ValuePtr>& params) {
-    if (params.size() != 1) {
-        throw LispError("\"print\" should receive one param.");
-    }
+ValuePtr print(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(1, 1, params);
     std::cout << params[0]->toString() << std::endl;
     return std::make_shared<NilValue>();
 }
 
-ValuePtr equal(const std::vector<ValuePtr>& params) {
-    if (params.size() != 2) {
-        throw LispError("\"=\" should receive two params.");
-    }
-    if (!params[0]->isNumber() || !params[1]->isNumber()) {
-        throw LispError("Cannot compare between non-numeric values.");
-    }
+ValuePtr equal(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(2, 2, params);
+    checkArgType({"Number", "Number"}, params);
     if (params[0]->asNumber().value() == params[1]->asNumber().value()) {
         return std::make_shared<BooleanValue>(true);
     } else {
@@ -133,13 +144,9 @@ ValuePtr equal(const std::vector<ValuePtr>& params) {
     }
 }
 
-ValuePtr less_than(const std::vector<ValuePtr>& params) {
-    if (params.size() != 2) {
-        throw LispError("\"<\" should receive two params.");
-    }
-    if (!params[0]->isNumber() || !params[1]->isNumber()) {
-        throw LispError("Cannot compare between non-numeric values.");
-    }
+ValuePtr less_than(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(2, 2, params);
+    checkArgType({"Number", "Number"}, params);
     if (params[0]->asNumber().value() < params[1]->asNumber().value()) {
         return std::make_shared<BooleanValue>(true);
     } else {
@@ -147,13 +154,9 @@ ValuePtr less_than(const std::vector<ValuePtr>& params) {
     }
 }
 
-ValuePtr greater_than(const std::vector<ValuePtr>& params) {
-    if (params.size() != 2) {
-        throw LispError("\">\" should receive two params.");
-    }
-    if (!params[0]->isNumber() || !params[1]->isNumber()) {
-        throw LispError("Cannot compare between non-numeric values.");
-    }
+ValuePtr greater_than(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(2, 2, params);
+    checkArgType({"Number", "Number"}, params);
     if (params[0]->asNumber().value() > params[1]->asNumber().value()) {
         return std::make_shared<BooleanValue>(true);
     } else {
@@ -161,26 +164,18 @@ ValuePtr greater_than(const std::vector<ValuePtr>& params) {
     }
 }
 
-ValuePtr less_than_or_equal(const std::vector<ValuePtr>& params) {
-    if (params.size() != 2) {
-        throw LispError("\"<=\" should receive two params.");
-    }
-    if (!params[0]->isNumber() || !params[1]->isNumber()) {
-        throw LispError("Cannot compare between non-numeric values.");
-    }
+ValuePtr less_than_or_equal(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(2, 2, params);
+    checkArgType({"Number", "Number"}, params);
     if (params[0]->asNumber().value() <= params[1]->asNumber().value()) {
         return std::make_shared<BooleanValue>(true);
     } else {
         return std::make_shared<BooleanValue>(false);
     }
 }
-ValuePtr greater_than_or_equal(const std::vector<ValuePtr>& params) {
-    if (params.size() != 2) {
-        throw LispError("\">=\" should receive two params.");
-    }
-    if (!params[0]->isNumber() || !params[1]->isNumber()) {
-        throw LispError("Cannot compare between non-numeric values.");
-    }
+ValuePtr greater_than_or_equal(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(2, 2, params);
+    checkArgType({"Number", "Number"}, params);
     if (params[0]->asNumber().value() >= params[1]->asNumber().value()) {
         return std::make_shared<BooleanValue>(true);
     } else {
@@ -188,12 +183,10 @@ ValuePtr greater_than_or_equal(const std::vector<ValuePtr>& params) {
     }
 }
 
-ValuePtr even(const std::vector<ValuePtr>& params) {
-    if (params.size() != 1) {
-        throw LispError("\"even?\" should receive one param.");
-    }
+ValuePtr even(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(1, 1, params);
     if (!params[0]->isInt()) {
-        throw LispError("Cannot judge a non-integral value is even or odd.");
+        throw ArgTypeError("Int", params[0]->getType());
     }
     if ((int)params[0]->asNumber().value() % 2 == 0) {
         return std::make_shared<BooleanValue>(true);
@@ -202,12 +195,10 @@ ValuePtr even(const std::vector<ValuePtr>& params) {
     }
 }
 
-ValuePtr odd(const std::vector<ValuePtr>& params) {
-    if (params.size() != 1) {
-        throw LispError("\"odd?\" should receive one param.");
-    }
+ValuePtr odd(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(1, 1, params);
     if (!params[0]->isInt()) {
-        throw LispError("Cannot judge a non-integral value is even or odd.");
+        throw ArgTypeError("Int", params[0]->getType());
     }
     if ((int)params[0]->asNumber().value() % 2 != 0) {
         return std::make_shared<BooleanValue>(true);
@@ -216,13 +207,9 @@ ValuePtr odd(const std::vector<ValuePtr>& params) {
     }
 }
 
-ValuePtr zero(const std::vector<ValuePtr>& params) {
-    if (params.size() != 1) {
-        throw LispError("\"zero?\" should receive one param.");
-    }
-    if (!params[0]->isNumber()) {
-        throw LispError("Cannot judge a non-numeric value is zero or not.");
-    }
+ValuePtr zero(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(1, 1, params);
+    checkArgType({"Number"}, params);
     if (params[0]->asNumber().value() == 0) {
         return std::make_shared<BooleanValue>(true);
     } else {
@@ -230,23 +217,15 @@ ValuePtr zero(const std::vector<ValuePtr>& params) {
     }
 }
 
-ValuePtr abs_new(const std::vector<ValuePtr>& params) {
-    if (params.size() != 1) {
-        throw LispError("\"abs\" should receive one param.");
-    }
-    if (!params[0]->isNumber()) {
-        throw LispError("Cannot compute absolute value for a non-numeric value.");
-    }
+ValuePtr abs_lisp(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(1, 1, params);
+    checkArgType({"Number"}, params);
     return std::make_shared<NumericValue>(abs(params[0]->asNumber().value()));
 }
 
-ValuePtr expt(const std::vector<ValuePtr>& params) {
-    if (params.size() != 2) {
-        throw LispError("\"expt\" should receive two params.");
-    }
-    if (!params[0]->isNumber() || !params[1]->isNumber()) {
-        throw LispError("Cannot compute x^y for non-numeric values.");
-    }
+ValuePtr expt(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(2, 2, params);
+    checkArgType({"Number", "Number"}, params);
     auto x = params[0]->asNumber().value();
     auto y = params[1]->asNumber().value();
     if (x == 0 && y == 0) {
@@ -255,57 +234,43 @@ ValuePtr expt(const std::vector<ValuePtr>& params) {
     return std::make_shared<NumericValue>(pow(x, y));
 }
 
-ValuePtr quotient(const std::vector<ValuePtr>& params) {
-    if (params.size() != 2) {
-        throw LispError("\"quotient\" should receive two params.");
-    }
-    if (!params[0]->isNumber() || !params[1]->isNumber()) {
-        throw LispError("Cannot compute quotient for non-numeric values.");
-    }
+ValuePtr quotient(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(2, 2, params);
+    checkArgType({"Number", "Number"}, params);
     auto x = params[0]->asNumber().value();
     auto y = params[1]->asNumber().value();
     if (y == 0) {
-        throw LispError("Cannot divided by zero.");
+        throw LispError("Division by zero.");
     }
     int result = int(x / y);
     return std::make_shared<NumericValue>(result);
 }
 
-ValuePtr remainder_new(const std::vector<ValuePtr>& params) {
-    if (params.size() != 2) {
-        throw LispError("\"remainder\" should receive two params.");
-    }
-    if (!params[0]->isNumber() || !params[1]->isNumber()) {
-        throw LispError("Cannot compute remainder for non-numeric values.");
-    }
+ValuePtr remainder_lisp(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(2, 2, params);
+    checkArgType({"Number", "Number"}, params);
     auto x = params[0]->asNumber().value();
     auto y = params[1]->asNumber().value();
-    auto z = quotient(params)->asNumber().value();
+    auto z = quotient(params, env)->asNumber().value();
     double result = x - y * z;
     return std::make_shared<NumericValue>(result);
 }
 
-ValuePtr modulo(const std::vector<ValuePtr>& params) {
-    if (params.size() != 2) {
-        throw LispError("\"modulo\" should receive two params.");
-    }
-    if (!params[0]->isNumber() || !params[1]->isNumber()) {
-        throw LispError("Cannot compute modulo for non-numeric values.");
-    }
+ValuePtr modulo(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(2, 2, params);
+    checkArgType({"Number", "Number"}, params);
     auto x = params[0]->asNumber().value();
     auto y = params[1]->asNumber().value();
     if (y == 0) {
-        throw LispError("Cannot divided by zero.");
+        throw LispError("Division by zero.");
     }
     int z = x / y >= 0 ? int(x / y) : int(x / y - 1);
     double result = x - y * z;
     return std::make_shared<NumericValue>(result);
 }
 
-ValuePtr display(const std::vector<ValuePtr>& params) {
-    if (params.size() != 1) {
-        throw LispError("\"display\" should receive one param.");
-    }
+ValuePtr display(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(1, 1, params);
     if (params[0]->isString()) {
         std::cout << dynamic_cast<StringValue*>(params[0].get())->getValue()
                   << std::endl;
@@ -315,31 +280,26 @@ ValuePtr display(const std::vector<ValuePtr>& params) {
     return std::make_shared<NilValue>();
 }
 
-ValuePtr exit_new(const std::vector<ValuePtr>& params) {
+ValuePtr exit_lisp(const std::vector<ValuePtr>& params, EvalEnv& env) {
     if (params.size() == 0) {
         std::exit(0);
     } else if (params.size() != 1) {
-        throw LispError("\"exit\" should not receive more than one param.");
+        throw ArgNumberError(0, 1, params.size());
     } else if (!params[0]->isInt()) {
-        throw LispError("Cannot exit with a non-integral value.");
+        throw ArgTypeError("Int", params[0]->getType());
     } else {
         std::exit(params[0]->asNumber().value());
     }
-    return std::make_shared<NilValue>();
 }
 
-ValuePtr newline(const std::vector<ValuePtr>& params) {
-    if (params.size() != 0) {
-        throw LispError("\"newline\" should not receive any params.");
-    }
+ValuePtr newline(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(0, 0, params);
     std::cout << std::endl;
     return std::make_shared<NilValue>();
 }
 
-ValuePtr atom(const std::vector<ValuePtr>& params) {
-    if (params.size() != 1) {
-        throw LispError("\"atom?\" should receive one param.");
-    }
+ValuePtr isatom(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(1, 1, params);
     if (params[0]->isBoolean() || params[0]->isNumber() ||
         params[0]->isString() || params[0]->isSymbol() || params[0]->isNil()) {
         return std::make_shared<BooleanValue>(true);
@@ -347,159 +307,239 @@ ValuePtr atom(const std::vector<ValuePtr>& params) {
     return std::make_shared<BooleanValue>(false);
 }
 
-ValuePtr boolean(const std::vector<ValuePtr>& params) {
-    if (params.size() != 1) {
-        throw LispError("\"boolean?\" should receive one param.");
-    }
+ValuePtr isboolean(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(1, 1, params);
     if (params[0]->isBoolean()) {
         return std::make_shared<BooleanValue>(true);
     }
     return std::make_shared<BooleanValue>(false);
 }
 
-ValuePtr integer(const std::vector<ValuePtr>& params) {
-    if (params.size() != 1) {
-        throw LispError("\"integer?\" should receive one param.");
-    }
+ValuePtr isinteger(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(1, 1, params);
     if (params[0]->isInt()) {
         return std::make_shared<BooleanValue>(true);
     }
     return std::make_shared<BooleanValue>(false);
 }
 
-ValuePtr list(const std::vector<ValuePtr>& params) {
-    if (params.size() != 1) {
-        throw LispError("\"list?\" should receive one param.");
-    }
-    if (params[0]->isNil() || params[0]->isPair()) {
+ValuePtr islist(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(1, 1, params);
+    if (params[0]->isList()) {
         return std::make_shared<BooleanValue>(true);
     }
     return std::make_shared<BooleanValue>(false);
 }
 
-ValuePtr number(const std::vector<ValuePtr>& params) {
-    if (params.size() != 1) {
-        throw LispError("\"number?\" should receive one param.");
-    }
+ValuePtr isnumber(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(1, 1, params);
     if (params[0]->isNumber()) {
         return std::make_shared<BooleanValue>(true);
     }
     return std::make_shared<BooleanValue>(false);
 }
 
-ValuePtr null(const std::vector<ValuePtr>& params) {
-    if (params.size() != 1) {
-        throw LispError("\"null?\" should receive one param.");
-    }
+ValuePtr isnull(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(1, 1, params);
     if (params[0]->isNil()) {
         return std::make_shared<BooleanValue>(true);
     }
     return std::make_shared<BooleanValue>(false);
 }
 
-ValuePtr pair(const std::vector<ValuePtr>& params) {
-    if (params.size() != 1) {
-        throw LispError("\"pair?\" should receive one param.");
-    }
+ValuePtr ispair(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(1, 1, params);
     if (params[0]->isPair()) {
         return std::make_shared<BooleanValue>(true);
     }
     return std::make_shared<BooleanValue>(false);
 }
 
-ValuePtr procedure(const std::vector<ValuePtr>& params) {
-    if (params.size() != 1) {
-        throw LispError("\"procedure?\" should receive one param.");
-    }
+ValuePtr isprocedure(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(1, 1, params);
     if (params[0]->isProcedure()) {
         return std::make_shared<BooleanValue>(true);
     }
     return std::make_shared<BooleanValue>(false);
 }
 
-ValuePtr string(const std::vector<ValuePtr>& params) {
-    if (params.size() != 1) {
-        throw LispError("\"string?\" should receive one param.");
-    }
+ValuePtr isstring(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(1, 1, params);
     if (params[0]->isString()) {
         return std::make_shared<BooleanValue>(true);
     }
     return std::make_shared<BooleanValue>(false);
 }
 
-ValuePtr symbol(const std::vector<ValuePtr>& params) {
-    if (params.size() != 1) {
-        throw LispError("\"symbol?\" should receive one param.");
-    }
+ValuePtr issymbol(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(1, 1, params);
     if (params[0]->isSymbol()) {
         return std::make_shared<BooleanValue>(true);
     }
     return std::make_shared<BooleanValue>(false);
 }
 
-ValuePtr car(const std::vector<ValuePtr>& params) {
-    if (params.size() != 1) {
-        throw LispError("\"car\" should receive one param.");
-    }
-    if (!params[0]->isPair()) {
-        throw LispError("\"car\" should receive a pair.");
-    }
+ValuePtr car(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(1, 1, params);
+    checkArgType({"Pair"}, params);
     return dynamic_cast<PairValue*>(params[0].get())->getCar();
 }
 
-ValuePtr cdr(const std::vector<ValuePtr>& params) {
-    if (params.size() != 1) {
-        throw LispError("\"cdr\" should receive one param.");
-    }
-    if (!params[0]->isPair()) {
-        throw LispError("\"cdr\" should receive a pair.");
-    }
+ValuePtr cdr(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(1, 1, params);
+    checkArgType({"Pair"}, params);
     return dynamic_cast<PairValue*>(params[0].get())->getCdr();
 }
 
-ValuePtr cons(const std::vector<ValuePtr>& params) {
-    if (params.size() != 2) {
-        throw LispError("\"cons\" should receive two params.");
-    }
+ValuePtr cons(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(2, 2, params);
     return std::make_shared<PairValue>(params[0], params[1]);
 }
 
-ValuePtr length(const std::vector<ValuePtr>& params) {
-    if (params.size() != 1) {
-        throw LispError("\"length\" should receive one param.");
-    }
-    if (!params[0]->isPair() && !params[0]->isNil()) {
-        throw LispError("\"length\" should receive a list.");
+ValuePtr length(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(1, 1, params);
+    if (!params[0]->isList()) {
+        throw ArgTypeError("List", params[0]->getType());
     }
     if (params[0]->isNil()) {
         return std::make_shared<NumericValue>(0);
     }
-    return std::make_shared<NumericValue>(dynamic_cast<PairValue*>(params[0].get())->toVector().size());
+    return std::make_shared<NumericValue>(params[0]->toVector().size());
 }
 
-ValuePtr list_new(const std::vector<ValuePtr>& params) {
+ValuePtr list(const std::vector<ValuePtr>& params, EvalEnv& env) {
     if (params.size() == 0) {
         return std::make_shared<NilValue>();
     }
-    std::vector<ValuePtr> next_params;
-    for (auto it = params.begin() + 1; it != params.end(); it++) {
-        next_params.push_back(*it);
-    }
-    return std::make_shared<PairValue>(params[0], list(next_params));
+    return std::make_shared<PairValue>(params[0], 
+        list(std::vector<ValuePtr>(params.begin() + 1, params.end()), env));
 }
 
-ValuePtr append(const std::vector<ValuePtr>& params) {
+ValuePtr append(const std::vector<ValuePtr>& params, EvalEnv& env) {
     std::vector<ValuePtr> all_params;
-    for (auto x : params) {
-        if (!x->isPair() && !x->isNil()) {
-            throw LispError("Cannot append non-list values.");
+    for (auto param : params) {
+        if (!param->isList()) {
+            throw ArgTypeError("List", param->getType());
         }
-        if (x->isNil()) {
+        if (param->isNil()) {
             continue;
         }
-        auto single_params = dynamic_cast<PairValue*>(x.get())->toVector();
+        auto single_params = param->toVector();
         all_params.insert(all_params.end(), single_params.begin(),
                           single_params.end());
     }
-    return list(all_params);
+    return list(all_params, env);
+}
+
+ValuePtr apply(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(2, 2, params);
+    checkArgType({"Procedure"}, params);
+    if (!params[1]->isList()) {
+        throw ArgTypeError("List", params[1]->getType());
+    }
+    auto proc = params[0];
+    auto list = params[1];
+    return env.apply(proc, list->toVector());
+}
+
+ValuePtr displayln(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    //TODO!
+    return std::make_shared<NilValue>();
+}
+
+ValuePtr error(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(0, 1, params);
+    if (params.size() == 0) {
+        throw SignalError(std::make_shared<NilValue>());
+    } else {
+        throw SignalError(params[0]);
+    }
+}
+
+ValuePtr eval(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(1, 1, params);
+    return env.eval(params[0]);
+}
+
+ValuePtr map(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(2, 2, params);
+    checkArgType({"Procedure"}, params);
+    if (!params[1]->isList()) {
+        throw ArgTypeError("List", params[1]->getType());
+    }
+    auto proc = params[0];
+    auto list = params[1];
+    std::vector<ValuePtr> result;
+    std::ranges::transform(list->toVector(), std::back_inserter(result),
+        [&](ValuePtr value) { return env.apply(proc, std::vector<ValuePtr>{value}); });
+    return Value::toList(result);
+}
+
+ValuePtr filter(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(2, 2, params);
+    checkArgType({"Procedure"}, params);
+    if (!params[1]->isList()) {
+        throw ArgTypeError("List", params[1]->getType());
+    }
+    auto proc = params[0];
+    auto list = params[1];
+    auto results = list->toVector();
+    results.erase(
+        std::remove_if(results.begin(), results.end(),
+            [&](const ValuePtr& value) {
+                return isNot({env.apply(proc, {value})}, env)->asBoolean() ==true;
+            }), results.end());
+    return Value::toList(results);
+}
+
+ValuePtr reduce(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(2, 2, params);
+    checkArgType({"Procedure"}, params);
+    if (!params[1]->isList()) {
+        throw ArgTypeError("List", params[1]->getType());
+    }
+    if (params[1]->isNil()) {
+        throw LispError("Expected non-nil value, but received Nil.");
+    }
+    auto proc = params[0];
+    auto list = params[1];
+    if (length(std::vector<ValuePtr>{list}, env)->asNumber() == 1) {
+        return car(std::vector<ValuePtr>{list}, env);
+    } else {
+        return env.apply(proc, std::vector<ValuePtr>{car(std::vector<ValuePtr>{list}, env),
+                      reduce(std::vector<ValuePtr>{
+                          proc, cdr(std::vector<ValuePtr>{list}, env)}, env)});
+    }
+
+}
+
+ValuePtr isEq(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(2, 2, params);
+    if (params[0]->getType() != params[1]->getType()) {
+        return std::make_shared<BooleanValue>(false);
+    }
+    if (params[0]->isSymbol() || params[0]->isNumber() || 
+        params[0]->isBoolean() || params[0]->isNil()) {
+        return std::make_shared<BooleanValue>(params[0]->toString() == params[1]->toString());
+    } else {
+        return std::make_shared<BooleanValue>(params[0] == params[1]);
+    }
+}
+
+ValuePtr isEqual(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(2, 2, params);
+    if (params[0]->getType() != params[1]->getType()) {
+        return std::make_shared<BooleanValue>(false);
+    }
+    return std::make_shared<BooleanValue>(params[0]->toString() == params[1]->toString());
+}
+
+ValuePtr isNot(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    checkArgNumber(1, 1, params);
+    if (params[0]->asBoolean().has_value() &&
+        params[0]->asBoolean().value() == false) {
+        return std::make_shared<BooleanValue>(true);
+    } else {
+        return std::make_shared<BooleanValue>(false);
+    }
 }
