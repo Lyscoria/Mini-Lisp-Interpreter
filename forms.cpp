@@ -1,16 +1,16 @@
 #include ".\forms.h"
 
 std::unordered_map<std::string, SpecialFormType> SPECIAL_FORMS{
-    std::make_pair("define", defineForm), 
-    std::make_pair("quote", quoteForm),
-    std::make_pair("if", ifForm),
-    std::make_pair("and", andForm), 
-    std::make_pair("or", orForm),
-    std::make_pair("lambda", lambdaForm),
-    std::make_pair("cond", condForm),     
-    std::make_pair("begin", beginForm),
-    std::make_pair("let", letForm),
-    std::make_pair("quasiquote", quasiquoteForm)
+    {"define", defineForm}, 
+    {"quote", quoteForm},
+    {"if", ifForm},         
+    {"and", andForm},
+    {"or", orForm},         
+    {"lambda", lambdaForm},
+    {"cond", condForm},     
+    {"begin", beginForm},
+    {"let", letForm},       
+    {"quasiquote", quasiquoteForm}
 };
 
 ValuePtr defineForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
@@ -18,11 +18,10 @@ ValuePtr defineForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
         env.defineBinding(*name, env.eval(args[1]));
         return std::make_shared<NilValue>();
     } else if (args[0]->isPair()) {
-        auto name = dynamic_cast<PairValue*>(args[0].get())->getCar();
+        auto name = args[0]->getCar();
         checkArgType({"Symbol"}, {name});
-        auto params = dynamic_cast<PairValue*>(args[0].get())->getCdr();
-        std::vector<ValuePtr> packedArgs;
-        packedArgs.push_back(params);
+        auto params = args[0]->getCdr();
+        std::vector<ValuePtr> packedArgs{params};
         packedArgs.insert(packedArgs.end(), args.begin() + 1, args.end());
         env.defineBinding(*name->asSymbol(), lambdaForm(packedArgs, env));
         return std::make_shared<NilValue>();
@@ -48,21 +47,25 @@ ValuePtr andForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
     if (args.size() == 0) {
         return std::make_shared<BooleanValue>(true);
     }
-    for (auto arg : args) {
-        if (env.eval(arg)->asBoolean() == false) {
+    ValuePtr result;
+    for (auto& arg : args) {
+        result = env.eval(arg);
+        if (result->asBoolean() == false) {
             return std::make_shared<BooleanValue>(false);
         }
     }
-    return env.eval(*(args.rbegin()));
+    return result;
 }
 
 ValuePtr orForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
     if (args.size() == 0) {
         return std::make_shared<BooleanValue>(false);
     }
-    for (auto arg : args) {
-        if (env.eval(arg)->asBoolean() != false) {
-            return env.eval(arg);
+    ValuePtr result;
+    for (auto& arg : args) {
+        result = env.eval(arg);
+        if (result->asBoolean() != false) {
+            return result;
         }
     }
     return std::make_shared<BooleanValue>(false);
@@ -80,7 +83,7 @@ ValuePtr lambdaForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
 }
 
 ValuePtr condForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
-    for (auto arg : args) {
+    for (auto& arg : args) {
         auto clause = arg->toVector();
         checkArgNumber(1, INT_MAX, clause);
         if (clause[0]->asSymbol() == "else") {
@@ -90,11 +93,11 @@ ValuePtr condForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
             if (clause.size() == 1) {
                 return env.eval(clause[0]);
             }
-            for (auto expr : clause) {
-                if (expr == clause[0]) continue;
-                env.eval(expr);
+            ValuePtr result;
+            for (int i = 1; i < clause.size(); i++) {
+                result = env.eval(clause[i]);
             }
-            return env.eval(*(clause.rbegin()));
+            return result;
         }
         if (env.eval(clause[0])->asBoolean() == false) {
             continue;
@@ -102,37 +105,40 @@ ValuePtr condForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
             if (clause.size() == 1) {
                 return env.eval(clause[0]);
             }
-            for (auto expr : clause) {
-                if (expr == clause[0]) continue;
-                env.eval(expr);
+            ValuePtr result;
+            for (int i = 1; i < clause.size(); i++) {
+                result = env.eval(clause[i]);
             }
-            return env.eval(*(clause.rbegin()));
+            return result;
         }
     }
 }
 
 ValuePtr beginForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
-    for (auto arg : args) {
-        env.eval(arg);
+    ValuePtr result;
+    for (auto& arg : args) {
+        result = env.eval(arg);
     }
-    return env.eval(*args.rbegin());
+    return result;
 }
 
 ValuePtr letForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
     checkArgNumber(2, INT_MAX, args);
     auto bindings = args[0];
-    std::vector<ValuePtr> params;
+    std::vector<std::string> params;
     std::vector<ValuePtr> values;
-    for (auto bind : bindings->toVector()) {
-        checkArgNumber(2, 2, bind->toVector());
-        params.push_back(bind->toVector()[0]);
-        values.push_back(env.eval(bind->toVector()[1]));
+    for (auto& bind : bindings->toVector()) {
+        auto bind_vec = bind->toVector();
+        checkArgNumber(2, 2, bind_vec);
+        params.push_back(bind_vec[0]->toString());
+        values.push_back(env.eval(bind_vec[1]));
     }
-    std::vector<ValuePtr> packedArgs;
-    packedArgs.push_back(Value::toList(params));
-    packedArgs.insert(packedArgs.end(), args.begin() + 1, args.end());
-    auto lambda = lambdaForm(packedArgs, env);
-    return dynamic_cast<LambdaValue*>(lambda.get())->apply(values);
+    auto newEnv = env.createChild(params, values);
+    ValuePtr result;
+    for (int i = 1; i < args.size(); i++) {
+        result = newEnv->eval(args[i]);
+    }
+    return result;
 }
 
 ValuePtr quasiquoteForm(const std::vector<ValuePtr>& args, EvalEnv& env) {

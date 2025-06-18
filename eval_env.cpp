@@ -2,7 +2,7 @@
 #include "./forms.h"
 #include "./value.h"
 
-ValuePtr EvalEnv::eval(ValuePtr expr) {
+ValuePtr EvalEnv::eval(const ValuePtr& expr) {
     if (expr->isSelfEvaluating()) {
         return expr;
     }
@@ -13,22 +13,37 @@ ValuePtr EvalEnv::eval(ValuePtr expr) {
         return lookupBinding(*name);
     }
     if (expr->isPair()) {
+        /*
         auto pairExpr = dynamic_cast<PairValue*>(expr.get());
-        auto exprVector = pairExpr->toVector();
-        auto name = exprVector[0]->asSymbol();
+        auto name = pairExpr->getCar()->asSymbol();
         if (name != std::nullopt && SPECIAL_FORMS.find(*name) != SPECIAL_FORMS.end()) {
             return SPECIAL_FORMS[*name](pairExpr->getCdr()->toVector(), *this);
         } else {
-            ValuePtr proc = this->eval(exprVector[0]);
+            ValuePtr proc = this->eval(pairExpr->getCar());
             std::vector<ValuePtr> args =
-                evalList(dynamic_cast<PairValue*>(expr.get())->getCdr());
+                evalList(expr->getCdr());
+            return this->apply(proc, args);
+        }
+        */
+        auto list = expr->toVector();
+        while (list[0]->isPair()) {
+            list[0] = eval(list[0]);
+        }
+        auto name = list[0]->asSymbol();
+        if (name != std::nullopt && SPECIAL_FORMS.contains(*name)) {
+            std::vector<ValuePtr> cdr_list(list.begin() + 1, list.end());
+            return SPECIAL_FORMS.at(*name)(cdr_list, *this);
+        }
+        else {
+            ValuePtr proc = eval(list[0]);
+            std::vector<ValuePtr> args = evalList(expr->getCdr());
             return this->apply(proc, args);
         }
     }
     throw LispError("Unimplemented"); //TODO
 }
 
-std::vector<ValuePtr> EvalEnv::evalList(ValuePtr expr) {
+std::vector<ValuePtr> EvalEnv::evalList(const ValuePtr& expr) {
     std::vector<ValuePtr> result;
     std::ranges::transform(expr->toVector(), 
                            std::back_inserter(result),
@@ -36,19 +51,19 @@ std::vector<ValuePtr> EvalEnv::evalList(ValuePtr expr) {
     return result;
 }
 
-ValuePtr EvalEnv::apply(ValuePtr proc, std::vector<ValuePtr> args) {
+ValuePtr EvalEnv::apply(const ValuePtr& proc, const std::vector<ValuePtr>& args) {
     if (typeid(*proc) == typeid(BuiltinProcValue)) {
-        return dynamic_cast<BuiltinProcValue*>(proc.get())->call(args, *this);
+        return proc->call(args, *this);
     } else {
-        return dynamic_cast<LambdaValue*>(proc.get())->apply(args);
+        return proc->apply(args);
     }
 }
 
-void EvalEnv::defineBinding(std::string name, ValuePtr arg) {
+void EvalEnv::defineBinding(const std::string& name, const ValuePtr& arg) {
     SYMBOLS[name] = arg;
 }
 
-ValuePtr EvalEnv::lookupBinding(std::string name) {
+ValuePtr EvalEnv::lookupBinding(const std::string& name) {
     auto it = SYMBOLS.find(name);
     if (it != SYMBOLS.end()) {
         return it->second;

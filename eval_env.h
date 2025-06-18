@@ -15,13 +15,13 @@ private:
     std::unordered_map<std::string, ValuePtr> SYMBOLS;
     std::shared_ptr<EvalEnv> parent = nullptr;
     EvalEnv() {
-        for (auto proc : BUILTIN_PROCEDURES) {
+        for (auto& proc : BUILTIN_PROCEDURES) {
             SYMBOLS.insert(std::make_pair(
                 proc.first, std::make_shared<BuiltinProcValue>(proc.second)));
         }
     }
-    EvalEnv(std::unordered_map<std::string, ValuePtr> SYMBOLS_,
-            std::shared_ptr<EvalEnv> parent_) {
+    EvalEnv(const std::unordered_map<std::string, ValuePtr>& SYMBOLS_,
+            const std::shared_ptr<EvalEnv>& parent_) {
         SYMBOLS = SYMBOLS_;
         parent = parent_;
     }
@@ -31,18 +31,18 @@ public:
         return std::shared_ptr<EvalEnv>(new EvalEnv());
     }
     static std::shared_ptr<EvalEnv> create(
-        std::unordered_map<std::string, ValuePtr> SYMBOLS_,
-        std::shared_ptr<EvalEnv> parent_) {
+        const std::unordered_map<std::string, ValuePtr>& SYMBOLS_,
+        const std::shared_ptr<EvalEnv>& parent_) {
         return std::shared_ptr<EvalEnv>(new EvalEnv(SYMBOLS_, parent_));
     }
     std::shared_ptr<EvalEnv> get_shared_this() {
         return shared_from_this();
     }
-    std::vector<ValuePtr> evalList(ValuePtr expr);
-    ValuePtr apply(ValuePtr proc, std::vector<ValuePtr> args);
-    ValuePtr eval(ValuePtr expr);
-    void defineBinding(std::string name, ValuePtr arg);
-    ValuePtr lookupBinding(std::string name);
+    std::vector<ValuePtr> evalList(const ValuePtr& expr);
+    ValuePtr apply(const ValuePtr& proc, const std::vector<ValuePtr>& args);
+    ValuePtr eval(const ValuePtr& expr);
+    void defineBinding(const std::string& name, const ValuePtr& arg);
+    ValuePtr lookupBinding(const std::string& name);
     std::shared_ptr<EvalEnv> createChild(const std::vector<std::string>& params, 
         const std::vector<ValuePtr>& args);
 };

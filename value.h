@@ -13,24 +13,28 @@ using ValuePtr = std::shared_ptr<Value>;
 class Value : public std::enable_shared_from_this<Value> {
 public:
     Value() = default;
-    bool isBoolean() const;
-    bool isNumber() const;
-    bool isSymbol() const;
-    bool isString() const;
-    bool isNil() const;
-    bool isPair() const;
-    bool isProcedure() const;
-    bool isSelfEvaluating() const;
-    bool isInt();
-    bool isList();
-    std::optional<bool> asBoolean();
-    std::optional<double> asNumber();
-    std::optional<std::string> asSymbol();
-    std::optional<std::string> asString();
+    virtual bool isBoolean() const;
+    virtual bool isNumber() const;
+    virtual bool isSymbol() const;
+    virtual bool isString() const;
+    virtual bool isNil() const;
+    virtual bool isPair() const;
+    virtual bool isProcedure() const;
+    virtual bool isSelfEvaluating() const;
+    virtual bool isInt();
+    virtual bool isList();
+    virtual std::optional<bool> asBoolean();
+    virtual std::optional<double> asNumber();
+    virtual std::optional<std::string> asSymbol();
+    virtual std::optional<std::string> asString();
     virtual std::string toString(bool toDisplay = 1) const = 0;
-    static ValuePtr toList(std::vector<ValuePtr>, bool toInit = 1);
+    virtual std::shared_ptr<Value> getCdr() const;
+    virtual std::shared_ptr<Value> getCar() const;
+    static ValuePtr toList(std::vector<ValuePtr>);
     std::vector<ValuePtr> toVector();
     std::string getType() const;
+    virtual ValuePtr call(const std::vector<ValuePtr>&, EvalEnv& env);
+    virtual ValuePtr apply(const std::vector<ValuePtr>& args);
     virtual ~Value() = default;
 };
 
@@ -40,6 +44,8 @@ private:
 public:
     BooleanValue(bool value) : value{value} {}
     bool getValue() const;
+    bool isBoolean() const;
+    std::optional<bool> asBoolean();
     std::string toString(bool toDisplay = 1) const;
 };
 
@@ -49,6 +55,8 @@ private:
 public:
     NumericValue(double value) : value{value} {}
     double getValue() const;
+    bool isNumber() const;
+    std::optional<double> asNumber();
     std::string toString(bool toDisplay = 1) const;
 };
 
@@ -58,12 +66,15 @@ private:
 public:
     StringValue(std::string value) : value {value} {}
     std::string getValue() const;
+    bool isString() const;
+    std::optional<std::string> asString();
     std::string toString(bool toDisplay = 1) const;
 };
 
 class NilValue : public Value {
 public:
     NilValue() = default;
+    bool isNil() const;
     std::string toString(bool toDisplay = 1) const;
 };
 
@@ -73,6 +84,8 @@ private:
 public:
     SymbolValue(std::string value) : value{value} {}
     std::string getValue() const;
+    bool isSymbol() const;
+    std::optional<std::string> asSymbol();
     std::string toString(bool toDisplay = 1) const;
 };
 
@@ -85,6 +98,7 @@ public:
     std::shared_ptr<Value> getCdr() const;
     std::shared_ptr<Value> getCar() const;
     std::string toString(bool toDisplay = 1) const;
+    bool isPair() const;
 };
 
 using BuiltinFuncType = ValuePtr(*)(const std::vector<ValuePtr>&, EvalEnv& env);
@@ -95,6 +109,7 @@ private:
 public:
     BuiltinProcValue(BuiltinFuncType func) : func {func} {}
     std::string toString(bool toDisplay = 1) const;
+    bool isProcedure() const;
     ValuePtr call(const std::vector<ValuePtr>&, EvalEnv& env);
 };
 
@@ -109,6 +124,7 @@ public:
                 std::shared_ptr<EvalEnv> env)
         : params{params}, body{body}, env{env} {}
     std::string toString(bool toDisplay = 1) const;
+    bool isProcedure() const;
     ValuePtr apply(const std::vector<ValuePtr>& args);
 };
 

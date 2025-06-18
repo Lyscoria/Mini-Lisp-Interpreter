@@ -33,17 +33,6 @@ public:
         : runtime_error(ArgTypeMessage(expected, actual)) {}
 };
 
-class SignalError : public std::exception {
-private:
-    ValuePtr value;
-
-public:
-    SignalError(ValuePtr value) : value{value} {};
-    const char* what() const noexcept override {
-        return value->toString().c_str();
-    }
-};
-
 void checkArgNumber(int min, int max, const std::vector<ValuePtr>& params);
 
 void checkArgType(const std::vector<std::string> types,

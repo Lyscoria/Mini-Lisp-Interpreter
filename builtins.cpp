@@ -7,53 +7,53 @@
 #include <numeric>
 
 const std::unordered_map<std::string, BuiltinFuncType> BUILTIN_PROCEDURES = {
-    std::make_pair("apply", apply), 
-    std::make_pair("print", print),
-    std::make_pair("display", display), 
-    std::make_pair("displayln", displayln),
-    std::make_pair("error", error), 
-    std::make_pair("exit", exit_lisp),
-    std::make_pair("eval", eval),
-    std::make_pair("newline", newline),
-    std::make_pair("atom?", isatom),
-    std::make_pair("boolean?", isboolean),
-    std::make_pair("integer?", isinteger),
-    std::make_pair("list?", islist),
-    std::make_pair("number?", isnumber),
-    std::make_pair("pair?", ispair),
-    std::make_pair("null?", isnull),
-    std::make_pair("procedure?", isprocedure),
-    std::make_pair("string?", isstring),
-    std::make_pair("symbol?", issymbol),
-    std::make_pair("car", car),
-    std::make_pair("cdr", cdr),
-    std::make_pair("cons", cons),
-    std::make_pair("length", length),
-    std::make_pair("list", list),
-    std::make_pair("append", append),
-    std::make_pair("map", map),
-    std::make_pair("filter", filter),
-    std::make_pair("reduce", reduce),
-    std::make_pair("+", add), 
-    std::make_pair("*", multiply),
-    std::make_pair("-", minus), 
-    std::make_pair("/", divide),
-    std::make_pair("abs", abs_lisp), 
-    std::make_pair("expt", expt),
-    std::make_pair("quotient", quotient),
-    std::make_pair("remainder", remainder_lisp),
-    std::make_pair("modulo", modulo),
-    std::make_pair("eq?", isEq),
-    std::make_pair("equal?", isEqual),
-    std::make_pair("not", isNot),
-    std::make_pair("=", equal),
-    std::make_pair("<", less_than), 
-    std::make_pair(">", greater_than), 
-    std::make_pair("<=", less_than_or_equal),
-    std::make_pair(">=", greater_than_or_equal),
-    std::make_pair("even?", even),
-    std::make_pair("odd?", odd),
-    std::make_pair("zero?", zero),
+    {"apply", apply},
+    {"print", print},
+    {"display", display},
+    {"displayln", displayln},
+    {"error", error},
+    {"exit", exit_lisp},
+    {"eval", eval},
+    {"newline", newline},
+    {"atom?", isatom},
+    {"boolean?", isboolean},
+    {"integer?", isinteger},
+    {"list?", islist},
+    {"number?", isnumber},
+    {"pair?", ispair},
+    {"null?", isnull},
+    {"procedure?", isprocedure},
+    {"string?", isstring},
+    {"symbol?", issymbol},
+    {"car", car},
+    {"cdr", cdr},
+    {"cons", cons},
+    {"length", length},
+    {"list", list},
+    {"append", append},
+    {"map", map},
+    {"filter", filter},
+    {"reduce", reduce},
+    {"+", add},
+    {"*", multiply},
+    {"-", minus},
+    {"/", divide},
+    {"abs", abs_lisp},
+    {"expt", expt},
+    {"quotient", quotient},
+    {"remainder", remainder_lisp},
+    {"modulo", modulo},
+    {"eq?", isEq},
+    {"equal?", isEqual},
+    {"not", isNot},
+    {"=", equal},
+    {"<", less_than},
+    {">", greater_than},
+    {"<=", less_than_or_equal},
+    {">=", greater_than_or_equal},
+    {"even?", even},
+    {"odd?", odd},
+    {"zero?", zero}
 };
 
 ValuePtr add(const std::vector<ValuePtr>& params, EvalEnv& env) {
@@ -366,13 +366,13 @@ ValuePtr issymbol(const std::vector<ValuePtr>& params, EvalEnv& env) {
 ValuePtr car(const std::vector<ValuePtr>& params, EvalEnv& env) {
     checkArgNumber(1, 1, params);
     checkArgType({"Pair"}, params);
-    return dynamic_cast<PairValue*>(params[0].get())->getCar();
+    return params[0]->getCar();
 }
 
 ValuePtr cdr(const std::vector<ValuePtr>& params, EvalEnv& env) {
     checkArgNumber(1, 1, params);
     checkArgType({"Pair"}, params);
-    return dynamic_cast<PairValue*>(params[0].get())->getCdr();
+    return params[0]->getCdr();
 }
 
 ValuePtr cons(const std::vector<ValuePtr>& params, EvalEnv& env) {
@@ -401,7 +401,7 @@ ValuePtr list(const std::vector<ValuePtr>& params, EvalEnv& env) {
 
 ValuePtr append(const std::vector<ValuePtr>& params, EvalEnv& env) {
     std::vector<ValuePtr> all_params;
-    for (auto param : params) {
+    for (auto& param : params) {
         if (!param->isList()) {
             throw ArgTypeError("List", param->getType());
         }
@@ -435,9 +435,9 @@ ValuePtr displayln(const std::vector<ValuePtr>& params, EvalEnv& env) {
 ValuePtr error(const std::vector<ValuePtr>& params, EvalEnv& env) {
     checkArgNumber(0, 1, params);
     if (params.size() == 0) {
-        throw SignalError(std::make_shared<NilValue>());
+        throw LispError(std::make_shared<NilValue>()->toString());
     } else {
-        throw SignalError(params[0]);
+        throw LispError(params[0]->toString());
     }
 }
 
@@ -456,7 +456,7 @@ ValuePtr map(const std::vector<ValuePtr>& params, EvalEnv& env) {
     auto list = params[1];
     std::vector<ValuePtr> result;
     std::ranges::transform(list->toVector(), std::back_inserter(result),
-        [&](ValuePtr value) { return env.apply(proc, std::vector<ValuePtr>{value}); });
+        [&](ValuePtr value) { return env.apply(proc, {value}); });
     return Value::toList(result);
 }
 
@@ -488,12 +488,11 @@ ValuePtr reduce(const std::vector<ValuePtr>& params, EvalEnv& env) {
     }
     auto proc = params[0];
     auto list = params[1];
-    if (length(std::vector<ValuePtr>{list}, env)->asNumber() == 1) {
-        return car(std::vector<ValuePtr>{list}, env);
+    if (length({list}, env)->asNumber() == 1) {
+        return car({list}, env);
     } else {
-        return env.apply(proc, std::vector<ValuePtr>{car(std::vector<ValuePtr>{list}, env),
-                      reduce(std::vector<ValuePtr>{
-                          proc, cdr(std::vector<ValuePtr>{list}, env)}, env)});
+        return env.apply(proc, {car({list}, env),
+                      reduce({proc, cdr({list}, env)}, env)});
     }
 
 }

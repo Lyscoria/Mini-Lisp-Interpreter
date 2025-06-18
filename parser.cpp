@@ -60,3 +60,7 @@ ValuePtr Parser::parseTails() {
         return std::make_shared<PairValue>(car, cdr);
     }
 }
+
+bool Parser::end() const {
+    return tokens.empty();
+}

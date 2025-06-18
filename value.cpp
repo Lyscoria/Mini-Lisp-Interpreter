@@ -41,8 +41,8 @@ std::string BooleanValue::toString(bool toDisplay) const {
 }
 
 std::string NumericValue::toString(bool toDisplay) const {
-    if (value == static_cast<int>(value)) {
-        return std::to_string(static_cast<int>(value));
+    if (value == int(value)) {
+        return std::to_string(int(value));
     } else {
         return std::to_string(value);
     }
@@ -116,27 +116,27 @@ ValuePtr PairValue::getCar() const {
 }
 
 bool Value::isNil() const {
-    if (typeid(*this) == typeid(NilValue)) {
-        return true;
-    } else {
-        return false;
-    }
+    return false;
+}
+
+bool NilValue::isNil() const {
+    return true;
 }
 
 bool Value::isPair() const {
-    if (typeid(*this) == typeid(PairValue)) {
-        return true;
-    } else {
-        return false;
-    }
+    return false;
+}
+
+bool PairValue::isPair() const {
+    return true;
 }
 
 bool Value::isNumber() const {
-    if (typeid(*this) == typeid(NumericValue)) {
-        return true;
-    } else {
-        return false;
-    }
+    return false;
+}
+
+bool NumericValue::isNumber() const {
+    return true;
 }
 
 bool Value::isInt(){
@@ -151,27 +151,27 @@ bool Value::isInt(){
 }
 
 bool Value::isBoolean() const {
-    if (typeid(*this) == typeid(BooleanValue)) {
-        return true;
-    } else {
-        return false;
-    }
+    return false;
+}
+
+bool BooleanValue::isBoolean() const {
+    return true;
 }
 
 bool Value::isSymbol() const {
-    if (typeid(*this) == typeid(SymbolValue)) {
-        return true;
-    } else {
-        return false;
-    }
+    return false;
+}
+
+bool SymbolValue::isSymbol() const {
+    return true;
 }
 
 bool Value::isString() const {
-    if (typeid(*this) == typeid(StringValue)) {
-        return true;
-    } else {
-        return false;
-    }
+    return false;
+}
+
+bool StringValue::isString() const {
+    return true;
 }
 
 bool Value::isSelfEvaluating() const {
@@ -183,12 +183,15 @@ bool Value::isSelfEvaluating() const {
 }
 
 bool Value::isProcedure() const {
-    if (typeid(*this) == typeid(BuiltinProcValue) ||
-        typeid(*this) == typeid(LambdaValue)) {
-        return true;
-    } else {
-        return false;
-    }
+    return false;
+}
+
+bool BuiltinProcValue::isProcedure() const {
+    return true;
+}
+
+bool LambdaValue::isProcedure() const {
+    return true;
 }
 
 bool Value::isList() {
@@ -197,49 +200,64 @@ bool Value::isList() {
     } else if (!isPair()) {
         return false;
     } else {
-        return dynamic_cast<PairValue*>(this)->getCdr()->isList();
+        return this->getCdr()->isList();
     }
 }
 
 std::optional<double> Value::asNumber() {
-    if (!this->isNumber()) {
-        return std::nullopt;
-    } else {
-        return dynamic_cast<NumericValue*>(this)->getValue();
-    }
+    return std::nullopt;
+}
+
+std::optional<double> NumericValue::asNumber() {
+    return value;
 }
 
 std::optional<std::string> Value::asSymbol() {
-    if (!this->isSymbol()) {
-        return std::nullopt;
-    } else {
-        return this->toString();
-    }
+    return std::nullopt;
+}
+
+std::optional<std::string> SymbolValue::asSymbol() {
+    return value;
 }
 
 std::optional<bool> Value::asBoolean() {
-    if (!this->isBoolean()) {
-        return std::nullopt;
-    } else {
-        return dynamic_cast<BooleanValue*>(this)->getValue();
-    }
+    return std::nullopt;
+}
+
+std::optional<bool> BooleanValue::asBoolean() {
+    return value;
 }
 
 std::optional<std::string> Value::asString() {
-    if (!this->isString()) {
-        return std::nullopt;
-    } else {
-        return dynamic_cast<StringValue*>(this)->getValue();
-    }
+    return std::nullopt;
+}
+
+std::optional<std::string> StringValue::asString() {
+    return value;
 }
 
 ValuePtr BuiltinProcValue::call(const std::vector<ValuePtr>& vec, EvalEnv& env) {
     return func(vec, env);
 }
 
+std::shared_ptr<Value> Value::getCdr() const {
+    return std::make_shared<NilValue>();
+}
+
+std::shared_ptr<Value> Value::getCar() const {
+    return std::make_shared<NilValue>();
+}
+
+ValuePtr Value::call(const std::vector<ValuePtr>&, EvalEnv& env) {
+    return std::make_shared<NilValue>();
+}
+ValuePtr Value::apply(const std::vector<ValuePtr>& args) {
+    return std::make_shared<NilValue>();
+}
+
 ValuePtr LambdaValue::apply(const std::vector<ValuePtr>& args) {
     std::shared_ptr<EvalEnv> newEnv = env->createChild(params, args);
-    for (auto expr : body) {
+    for (auto& expr : body) {
         newEnv->eval(expr);
     }
     return newEnv->eval(*(body.end() - 1));
@@ -248,6 +266,7 @@ ValuePtr LambdaValue::apply(const std::vector<ValuePtr>& args) {
 std::vector<ValuePtr> Value::toVector() {
     std::vector<ValuePtr> result;
     if (isPair()) {
+        /*
         PairValue* cur = dynamic_cast<PairValue*>(this);
         while (cur != nullptr) {
             result.push_back(cur->getCar());
@@ -261,18 +280,31 @@ std::vector<ValuePtr> Value::toVector() {
                 break;
             }
         }
+        */
+        ValuePtr cur = shared_from_this();
+        while (cur->isPair()) {
+            result.push_back(cur->getCar());
+            auto next = cur->getCdr();
+            if (next->isPair()) {
+                cur = next;
+            }
+            else {
+                if (!cur->getCdr()->isNil()) {
+                    result.push_back(cur->getCdr());
+                }
+                break;
+            }
+        }
     } else if (!isNil()) {
         result.push_back(shared_from_this());
     }
     return result;
 }
 
-ValuePtr Value::toList(std::vector<ValuePtr> vec, bool toInit) {
-    if (toInit) std::reverse(vec.begin(), vec.end());
-    if (vec.size() == 0) {
-        return std::make_shared<NilValue>();
+ValuePtr Value::toList(std::vector<ValuePtr> vec) {
+    ValuePtr result = std::make_shared<NilValue>();
+    for (auto it = vec.rbegin(); it != vec.rend(); it++) {
+        result = std::make_shared<PairValue>(*it, result);
     }
-    auto first = vec.back();
-    vec.pop_back();
-    return std::make_shared<PairValue>(first, toList(vec, false));
+    return result;
 }
