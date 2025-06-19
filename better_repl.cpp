@@ -63,9 +63,7 @@ void REPL::REPLMode(std::shared_ptr<EvalEnv>& env) {
             std::string line;
             std::getline(std::cin, line);
             if (line == "exit") break;
-            if (line.empty()) {
-                throw LispError("End of Line");
-            }
+            if (line.empty()) continue;
             std::cout << "\033[1A\033[K";
             std::cout << prompt;
             for (int i = 0; i < bracketLevel; i++) {
