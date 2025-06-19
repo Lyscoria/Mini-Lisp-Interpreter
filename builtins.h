@@ -7,6 +7,7 @@
 #include <string>
 
 extern const std::unordered_map<std::string, BuiltinFuncType> BUILTIN_PROCEDURES;
+extern const std::vector<std::string> BUILTIN_PROCEDURE_NAMES;
 
 ValuePtr apply(const std::vector<ValuePtr>& params, EvalEnv& env);
 ValuePtr display(const std::vector<ValuePtr>& params, EvalEnv& env);

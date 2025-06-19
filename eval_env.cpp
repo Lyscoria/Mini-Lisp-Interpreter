@@ -13,18 +13,6 @@ ValuePtr EvalEnv::eval(const ValuePtr& expr) {
         return lookupBinding(*name);
     }
     if (expr->isPair()) {
-        /*
-        auto pairExpr = dynamic_cast<PairValue*>(expr.get());
-        auto name = pairExpr->getCar()->asSymbol();
-        if (name != std::nullopt && SPECIAL_FORMS.find(*name) != SPECIAL_FORMS.end()) {
-            return SPECIAL_FORMS[*name](pairExpr->getCdr()->toVector(), *this);
-        } else {
-            ValuePtr proc = this->eval(pairExpr->getCar());
-            std::vector<ValuePtr> args =
-                evalList(expr->getCdr());
-            return this->apply(proc, args);
-        }
-        */
         auto list = expr->toVector();
         while (list[0]->isPair()) {
             list[0] = eval(list[0]);

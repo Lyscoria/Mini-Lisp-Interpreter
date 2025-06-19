@@ -56,6 +56,20 @@ const std::unordered_map<std::string, BuiltinFuncType> BUILTIN_PROCEDURES = {
     {"zero?", zero}
 };
 
+const std::vector<std::string> BUILTIN_PROCEDURE_NAMES = {
+    "apply",     "print",      "display",    "displayln",
+    "error",     "exit",       "eval",       "newline",
+    "atom\\?",   "boolean\\?", "integer\\?", "list\\?",
+    "number\\?", "pair\\?",    "null\\?",    "procedure\\?",
+    "string\\?", "symbol\\?",  "car",        "cdr",
+    "cons",      "length",     "list",       "append",
+    "map",       "filter",     "reduce",     "\\+",
+    "\\*",       "-",          "/",          "abs",
+    "expt",      "quotient",   "remainder",  "modulo",
+    "eq\\?",     "equal\\?",   "not",        "=",
+    "<",         ">",          "<=",         ">=",
+    "even\\?",   "odd\\?",     "zero\\?"};
+
 ValuePtr add(const std::vector<ValuePtr>& params, EvalEnv& env) {
     double result = std::accumulate(params.begin(), params.end(), 0.0, 
         [](double acc, const auto& param) {

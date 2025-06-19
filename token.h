@@ -25,9 +25,10 @@ using TokenPtr = std::unique_ptr<Token>;
 class Token {
 private:
     TokenType type;
+    mutable std::string originalText;
 
 protected:
-    Token(TokenType type) : type{type} {}
+    Token(TokenType type) : type{type}, originalText{""} {}
 
 public:
     virtual ~Token() = default;
@@ -39,6 +40,12 @@ public:
         return type;
     }
     virtual std::string toString() const;
+    const std::string& getOriginalText() const {
+        return originalText;
+    }
+    void setOriginalText(const std::string& text) const {
+        originalText = text;
+    }
 };
 
 class BooleanLiteralToken : public Token {
