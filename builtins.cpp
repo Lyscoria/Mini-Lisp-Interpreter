@@ -56,20 +56,6 @@ const std::unordered_map<std::string, BuiltinFuncType> BUILTIN_PROCEDURES = {
     {"zero?", zero}
 };
 
-const std::vector<std::string> BUILTIN_PROCEDURE_NAMES = {
-    "apply",     "print",      "display",    "displayln",
-    "error",     "exit",       "eval",       "newline",
-    "atom\\?",   "boolean\\?", "integer\\?", "list\\?",
-    "number\\?", "pair\\?",    "null\\?",    "procedure\\?",
-    "string\\?", "symbol\\?",  "car",        "cdr",
-    "cons",      "length",     "list",       "append",
-    "map",       "filter",     "reduce",     "\\+",
-    "\\*",       "-",          "/",          "abs",
-    "expt",      "quotient",   "remainder",  "modulo",
-    "eq\\?",     "equal\\?",   "not",        "=",
-    "<",         ">",          "<=",         ">=",
-    "even\\?",   "odd\\?",     "zero\\?"};
-
 ValuePtr add(const std::vector<ValuePtr>& params, EvalEnv& env) {
     double result = std::accumulate(params.begin(), params.end(), 0.0, 
         [](double acc, const auto& param) {
@@ -119,7 +105,7 @@ ValuePtr divide(const std::vector<ValuePtr>& params, EvalEnv& env) {
     if (params.size() == 2) {
         checkArgType({"Number", "Number"}, params);
         if (params[1]->asNumber().value() == 0) {
-            throw LispError("Cannot divided by zero.");
+            throw LispError("Division by zero.");
         }
         result = params[0]->asNumber().value() / params[1]->asNumber().value();
     }
@@ -270,10 +256,9 @@ ValuePtr modulo(const std::vector<ValuePtr>& params, EvalEnv& env) {
 ValuePtr display(const std::vector<ValuePtr>& params, EvalEnv& env) {
     checkArgNumber(1, 1, params);
     if (params[0]->isString()) {
-        std::cout << dynamic_cast<StringValue*>(params[0].get())->getValue()
-                  << std::endl;
+        std::cout << dynamic_cast<StringValue*>(params[0].get())->getValue();
     } else {
-        std::cout << params[0]->toString() << std::endl;
+        std::cout << params[0]->toString();
     }
     return std::make_shared<NilValue>();
 }
@@ -406,11 +391,14 @@ ValuePtr length(const std::vector<ValuePtr>& params, EvalEnv& env) {
 }
 
 ValuePtr list(const std::vector<ValuePtr>& params, EvalEnv& env) {
-    if (params.size() == 0) {
+    if (params.empty()) {
         return std::make_shared<NilValue>();
     }
-    return std::make_shared<PairValue>(params[0], 
-        list(std::vector<ValuePtr>(params.begin() + 1, params.end()), env));
+    ValuePtr result = std::make_shared<NilValue>();
+    for (auto it = params.rbegin(); it != params.rend(); ++it) {
+        result = std::make_shared<PairValue>(*it, result);
+    }
+    return result;
 }
 
 ValuePtr append(const std::vector<ValuePtr>& params, EvalEnv& env) {
@@ -508,7 +496,6 @@ ValuePtr reduce(const std::vector<ValuePtr>& params, EvalEnv& env) {
         return env.apply(proc, {car({list}, env),
                       reduce({proc, cdr({list}, env)}, env)});
     }
-
 }
 
 ValuePtr isEq(const std::vector<ValuePtr>& params, EvalEnv& env) {

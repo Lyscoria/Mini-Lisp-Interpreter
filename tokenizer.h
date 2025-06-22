@@ -12,10 +12,15 @@ private:
     std::deque<TokenPtr> tokenize();
 
     std::string input;
-    Tokenizer(const std::string& input) : input{input} {}
+    bool& inComment;
+
+    Tokenizer(const std::string& input, bool& commentState)
+        : input{input}, inComment{commentState} {}
 
 public:
     static std::deque<TokenPtr> tokenize(const std::string& input);
+    static std::deque<TokenPtr> tokenize(const std::string& input,
+                                         bool& commentState);
 };
 
 #endif

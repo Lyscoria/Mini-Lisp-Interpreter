@@ -31,6 +31,7 @@ std::string Token::toString() const {
         case TokenType::QUASIQUOTE: return "(QUASIQUOTE)"; break;
         case TokenType::UNQUOTE: return "(UNQUOTE)"; break;
         case TokenType::DOT: return "(DOT)"; break;
+        case TokenType::COMMENT: return "(COMMENT)"; break;
         default: return "(UNKNOWN)";
     }
 }
@@ -61,6 +62,10 @@ std::string StringLiteralToken::toString() const {
 
 std::string IdentifierToken::toString() const {
     return "(IDENTIFIER " + name + ")";
+}
+
+std::string CommentToken::toString() const {
+    return "(COMMENT " + content + ")";
 }
 
 std::ostream& operator<<(std::ostream& os, const Token& token) {

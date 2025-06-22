@@ -51,7 +51,7 @@ ValuePtr andForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
     for (auto& arg : args) {
         result = env.eval(arg);
         if (result->asBoolean() == false) {
-            return std::make_shared<BooleanValue>(false);
+            return result;
         }
     }
     return result;
@@ -68,7 +68,7 @@ ValuePtr orForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
             return result;
         }
     }
-    return std::make_shared<BooleanValue>(false);
+    return result;
 }
 
 ValuePtr lambdaForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
@@ -99,11 +99,12 @@ ValuePtr condForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
             }
             return result;
         }
-        if (env.eval(clause[0])->asBoolean() == false) {
+        auto condition = env.eval(clause[0]);
+        if (condition->asBoolean() == false) {
             continue;
         } else {
             if (clause.size() == 1) {
-                return env.eval(clause[0]);
+                return condition;
             }
             ValuePtr result;
             for (int i = 1; i < clause.size(); i++) {
@@ -112,6 +113,7 @@ ValuePtr condForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
             return result;
         }
     }
+    throw LispError("Incorrect cond form.");
 }
 
 ValuePtr beginForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
@@ -130,6 +132,9 @@ ValuePtr letForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
     for (auto& bind : bindings->toVector()) {
         auto bind_vec = bind->toVector();
         checkArgNumber(2, 2, bind_vec);
+        if (!bind_vec[0]->isSymbol()) {
+            throw ArgTypeError("Symbol", bind_vec[0]->getType());
+        }
         params.push_back(bind_vec[0]->toString());
         values.push_back(env.eval(bind_vec[1]));
     }

@@ -1,18 +1,26 @@
 #include "./better_repl.h"
 
-#include "./better_repl.h"
-
 std::string REPL::highlight(const std::string& text) {
-    auto tokens = Tokenizer::tokenize(text);
+    bool tempCommentState = false;
+    auto tokens = Tokenizer::tokenize(text, tempCommentState);
     std::ostringstream result;
-    size_t pos = 0;
+    int pos = 0;
     for (const auto& token : tokens) {
         const std::string& originalText = token->getOriginalText();
-        size_t tokenPos = text.find(originalText, pos);
+        int tokenPos = text.find(originalText, pos);
         if (tokenPos > pos) {
             result << text.substr(pos, tokenPos - pos);
         }
-        result << colorizeToken(token.get());
+        if (token->getType() == TokenType::COMMENT) {
+            result << colorize(originalText, GREEN);
+        } else if (originalText.substr(0, 2) == "#|" ||
+                   (originalText.find("#|") != std::string::npos &&
+                    originalText.find("|#") == std::string::npos)) {
+            result << colorize(originalText, GREEN);
+        } else {
+            result << colorizeToken(token.get());
+        }
+
         pos = tokenPos + originalText.length();
     }
     if (pos < text.length()) {
@@ -23,16 +31,20 @@ std::string REPL::highlight(const std::string& text) {
 
 std::string REPL::colorizeToken(Token* token) {
     const std::string& originalText = token->getOriginalText();
-    if (auto str = dynamic_cast<StringLiteralToken*>(token)) {
+    if (token->getType() == TokenType::COMMENT) {
+        return colorize(originalText, GREEN);
+    } else if (auto str = dynamic_cast<StringLiteralToken*>(token)) {
         return colorize(originalText, GREEN);
     } else if (auto num = dynamic_cast<NumericLiteralToken*>(token)) {
         return colorize(originalText, GREEN);
     } else if (auto bool_token = dynamic_cast<BooleanLiteralToken*>(token)) {
-        return colorize(originalText, MAGENTA);
+        return colorize(originalText, GREEN);
     } else if (auto id = dynamic_cast<IdentifierToken*>(token)) {
         std::string name = id->getName();
         auto color = (BUILTIN_PROCEDURES.count(name) ||
-                      SPECIAL_FORMS.count(name) || name == "else") ? MAGENTA : YELLOW;
+                      SPECIAL_FORMS.count(name) || name == "else")
+                         ? MAGENTA
+                         : YELLOW;
         return colorize(originalText, color);
     } else {
         switch (token->getType()) {
@@ -52,10 +64,16 @@ std::string REPL::colorize(const std::string& text, const std::string& color) {
 
 void REPL::REPLMode(std::shared_ptr<EvalEnv>& env) {
     int bracketLevel = 0;
-    std::string sentence;
+    bool inComment = false;
+    std::string allInput;
+
     while (true) {
         try {
-            std::string prompt = (bracketLevel == 0) ? ">>> " : "... ";
+            if (bracketLevel < 0) {
+                throw LispError("Incorrect paren.");
+            }
+            std::string prompt =
+                (bracketLevel == 0 && !inComment) ? ">>> " : "... ";
             std::cout << prompt;
             for (int i = 0; i < bracketLevel; i++) {
                 std::cout << "  ";
@@ -69,24 +87,44 @@ void REPL::REPLMode(std::shared_ptr<EvalEnv>& env) {
             for (int i = 0; i < bracketLevel; i++) {
                 std::cout << "  ";
             }
-            std::cout << highlight(line) << std::endl;
-            for (char c : line) {
-                if (c == '(') bracketLevel++;
-                if (c == ')') bracketLevel--;
+
+            if (inComment) {
+                std::cout << colorize(line, GREEN) << std::endl;
+            } else {
+                std::cout << highlight(line) << std::endl;
             }
-            sentence += " " + line;
-            if (bracketLevel == 0 && !sentence.empty()) {
-                auto tokens = Tokenizer::tokenize(sentence);
-                Parser parser(std::move(tokens));
-                auto value = parser.parse();
-                auto result = env->eval(std::move(value));
-                std::cout << CYAN << result->toString() << RESET << std::endl;
-                sentence.clear();
+
+            allInput += line + "\n";
+
+            auto tokens = Tokenizer::tokenize(line, inComment);
+            for (const auto& token : tokens) {
+                if (token->getType() == TokenType::LEFT_PAREN) bracketLevel++;
+                if (token->getType() == TokenType::RIGHT_PAREN) bracketLevel--;
+            }
+
+            if (!inComment && bracketLevel == 0 && !allInput.empty()) {
+                bool tempState = false;
+                auto parseTokens = Tokenizer::tokenize(allInput, tempState);
+                std::deque<TokenPtr> filteredTokens;
+                for (auto& token : parseTokens) {
+                    if (token->getType() != TokenType::COMMENT) {
+                        filteredTokens.push_back(std::move(token));
+                    }
+                }
+                if (!filteredTokens.empty()) {
+                    Parser parser(std::move(filteredTokens));
+                    auto value = parser.parse();
+                    auto result = env->eval(std::move(value));
+                    std::cout << CYAN << result->toString() << RESET
+                              << std::endl;
+                }
+                allInput.clear();
             }
         } catch (std::runtime_error& e) {
             std::cout << "\033[31mError: " << e.what() << RESET << std::endl;
             bracketLevel = 0;
-            sentence.clear();
+            inComment = false;
+            allInput.clear();
         }
     }
 }

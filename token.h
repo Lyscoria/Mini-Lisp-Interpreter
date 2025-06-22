@@ -17,6 +17,7 @@ enum class TokenType {
     NUMERIC_LITERAL,
     STRING_LITERAL,
     IDENTIFIER,
+    COMMENT,
 };
 
 class Token;
@@ -53,7 +54,8 @@ private:
     bool value;
 
 public:
-    BooleanLiteralToken(bool value) : Token(TokenType::BOOLEAN_LITERAL), value{value} {}
+    BooleanLiteralToken(bool value)
+        : Token(TokenType::BOOLEAN_LITERAL), value{value} {}
 
     static std::unique_ptr<BooleanLiteralToken> fromChar(char c);
 
@@ -68,7 +70,8 @@ private:
     double value;
 
 public:
-    NumericLiteralToken(double value) : Token(TokenType::NUMERIC_LITERAL), value{value} {}
+    NumericLiteralToken(double value)
+        : Token(TokenType::NUMERIC_LITERAL), value{value} {}
 
     double getValue() const {
         return value;
@@ -81,7 +84,8 @@ private:
     std::string value;
 
 public:
-    StringLiteralToken(const std::string& value) : Token(TokenType::STRING_LITERAL), value{value} {}
+    StringLiteralToken(const std::string& value)
+        : Token(TokenType::STRING_LITERAL), value{value} {}
 
     const std::string& getValue() const {
         return value;
@@ -94,10 +98,25 @@ private:
     std::string name;
 
 public:
-    IdentifierToken(const std::string& name) : Token(TokenType::IDENTIFIER), name{name} {}
+    IdentifierToken(const std::string& name)
+        : Token(TokenType::IDENTIFIER), name{name} {}
 
     const std::string& getName() const {
         return name;
+    }
+    std::string toString() const override;
+};
+
+class CommentToken : public Token {
+private:
+    std::string content;
+
+public:
+    CommentToken(const std::string& content)
+        : Token(TokenType::COMMENT), content{content} {}
+
+    const std::string& getContent() const {
+        return content;
     }
     std::string toString() const override;
 };

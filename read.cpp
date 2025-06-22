@@ -11,10 +11,18 @@ void fileMode(std::shared_ptr<EvalEnv>& env, const std::string& filepath) {
     if (!input) {
         std::cerr << "Error: Could not open file " << filepath << std::endl;
     }
-    std::string file((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+    std::string file((std::istreambuf_iterator<char>(input)),
+                     std::istreambuf_iterator<char>());
     try {
-        auto tokens = Tokenizer::tokenize(file);
-        Parser parser(std::move(tokens));
+        bool commentState = false;
+        auto tokens = Tokenizer::tokenize(file, commentState);
+        std::deque<TokenPtr> filteredTokens;
+        for (auto& token : tokens) {
+            if (token->getType() != TokenType::COMMENT) {
+                filteredTokens.push_back(std::move(token));
+            }
+        }
+        Parser parser(std::move(filteredTokens));
         while (!parser.end()) {
             auto value = parser.parse();
             env->eval(std::move(value));

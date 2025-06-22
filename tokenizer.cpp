@@ -6,15 +6,39 @@
 
 #include "./error.h"
 
-const std::set<char> TOKEN_END{'(', ')', '\'', '`', ',', '"'};
+const std::set<char> TOKEN_END{'(', ')', '\'', '`', ',', '"', ';', '#', '|'};
 
 TokenPtr Tokenizer::nextToken(int& pos) {
     while (pos < input.size()) {
+        if (inComment) {
+            int start = pos;
+            while (pos + 1 < input.size()) {
+                if (input[pos] == '|' && input[pos + 1] == '#') {
+                    pos += 2;
+                    inComment = false;
+                    auto token = std::make_unique<CommentToken>(
+                        input.substr(start, pos - start));
+                    token->setOriginalText(input.substr(start, pos - start));
+                    return token;
+                }
+                pos++;
+            }
+            if (pos < input.size()) pos++;
+            auto token = std::make_unique<CommentToken>(input.substr(start));
+            token->setOriginalText(input.substr(start));
+            return token;
+        }
+
         auto c = input[pos];
         if (c == ';') {
+            int start = pos;
             while (pos < input.size() && input[pos] != '\n') {
                 pos++;
             }
+            auto token = std::make_unique<CommentToken>(
+                input.substr(start, pos - start));
+            token->setOriginalText(input.substr(start, pos - start));
+            return token;
         } else if (std::isspace(c)) {
             pos++;
         } else if (auto token = Token::fromChar(c)) {
@@ -22,10 +46,36 @@ TokenPtr Tokenizer::nextToken(int& pos) {
             pos++;
             return token;
         } else if (c == '#') {
-            if (auto result = BooleanLiteralToken::fromChar(input[pos + 1])) {
-                result->setOriginalText(input.substr(pos, 2));
+            if (pos + 1 < input.size() && input[pos + 1] == '|') {
+                inComment = true;
+                int start = pos;
                 pos += 2;
-                return result;
+                while (pos + 1 < input.size()) {
+                    if (input[pos] == '|' && input[pos + 1] == '#') {
+                        pos += 2;
+                        inComment = false;
+                        auto token = std::make_unique<CommentToken>(
+                            input.substr(start, pos - start));
+                        token->setOriginalText(
+                            input.substr(start, pos - start));
+                        return token;
+                    }
+                    pos++;
+                }
+                if (pos < input.size()) pos++;
+                auto token =
+                    std::make_unique<CommentToken>(input.substr(start));
+                token->setOriginalText(input.substr(start));
+                return token;
+            } else if (pos + 1 < input.size()) {
+                if (auto result =
+                        BooleanLiteralToken::fromChar(input[pos + 1])) {
+                    result->setOriginalText(input.substr(pos, 2));
+                    pos += 2;
+                    return result;
+                } else {
+                    throw SyntaxError("Unexpected character after #");
+                }
             } else {
                 throw SyntaxError("Unexpected character after #");
             }
@@ -66,9 +116,11 @@ TokenPtr Tokenizer::nextToken(int& pos) {
             TokenPtr token;
             if (text == ".") {
                 token = Token::dot();
-            } else if (std::isdigit(text[0]) || text[0] == '+' || text[0] == '-' || text[0] == '.') {
+            } else if (std::isdigit(text[0]) || text[0] == '+' ||
+                       text[0] == '-' || text[0] == '.') {
                 try {
-                    token = std::make_unique<NumericLiteralToken>(std::stod(text));
+                    token =
+                        std::make_unique<NumericLiteralToken>(std::stod(text));
                 } catch (std::invalid_argument& e) {
                     token = std::make_unique<IdentifierToken>(text);
                 }
@@ -96,5 +148,11 @@ std::deque<TokenPtr> Tokenizer::tokenize() {
 }
 
 std::deque<TokenPtr> Tokenizer::tokenize(const std::string& input) {
-    return Tokenizer(input).tokenize();
+    bool dummyState = false;
+    return Tokenizer(input, dummyState).tokenize();
+}
+
+std::deque<TokenPtr> Tokenizer::tokenize(const std::string& input,
+                                         bool& commentState) {
+    return Tokenizer(input, commentState).tokenize();
 }

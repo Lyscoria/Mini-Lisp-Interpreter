@@ -25,7 +25,7 @@ ValuePtr Parser::parse() {
     }
     if (token->getType() == TokenType::LEFT_PAREN) {
         return parseTails();
-    } 
+    }
     if (token->getType() == TokenType::QUOTE) {
         return Value::toList(std::vector<ValuePtr>{
             std::make_shared<SymbolValue>("quote"), this->parse()});
@@ -50,7 +50,7 @@ ValuePtr Parser::parseTails() {
         return std::make_shared<NilValue>();
     }
     auto car = this->parse();
-    if (tokens.front()->getType() == TokenType::DOT) {
+    if (!tokens.empty() && tokens.front()->getType() == TokenType::DOT) {
         tokens.pop_front();
         auto cdr = this->parse();
         tokens.pop_front();
