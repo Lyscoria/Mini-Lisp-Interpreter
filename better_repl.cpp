@@ -20,7 +20,6 @@ std::string REPL::highlight(const std::string& text) {
         } else {
             result << colorizeToken(token.get());
         }
-
         pos = tokenPos + originalText.length();
     }
     if (pos < text.length()) {
@@ -34,25 +33,28 @@ std::string REPL::colorizeToken(Token* token) {
     if (token->getType() == TokenType::COMMENT) {
         return colorize(originalText, GREEN);
     } else if (auto str = dynamic_cast<StringLiteralToken*>(token)) {
-        return colorize(originalText, GREEN);
+        return colorize(originalText, LIGHT_GREEN);
     } else if (auto num = dynamic_cast<NumericLiteralToken*>(token)) {
-        return colorize(originalText, GREEN);
+        return colorize(originalText, LIGHT_BLUE);
     } else if (auto bool_token = dynamic_cast<BooleanLiteralToken*>(token)) {
-        return colorize(originalText, GREEN);
+        return colorize(originalText, LIGHT_RED);
     } else if (auto id = dynamic_cast<IdentifierToken*>(token)) {
         std::string name = id->getName();
-        auto color = (BUILTIN_PROCEDURES.count(name) ||
-                      SPECIAL_FORMS.count(name) || name == "else")
-                         ? MAGENTA
-                         : YELLOW;
+        auto color = LIGHT_YELLOW;
+        if (BUILTIN_PROCEDURES.count(name)) {
+            color = YELLOW;
+        }
+        else if (SPECIAL_FORMS.count(name) || name == "else") {
+            color = LIGHT_PURPLE;
+        }
         return colorize(originalText, color);
     } else {
         switch (token->getType()) {
             case TokenType::LEFT_PAREN:
-            case TokenType::RIGHT_PAREN: return colorize(originalText, CYAN);
+            case TokenType::RIGHT_PAREN:
             case TokenType::QUOTE:
             case TokenType::QUASIQUOTE:
-            case TokenType::UNQUOTE: return colorize(originalText, MAGENTA);
+            case TokenType::UNQUOTE: return colorize(originalText, LIGHT_CYAN);
             default: return colorize(originalText, YELLOW);
         }
     }
@@ -66,7 +68,6 @@ void REPL::REPLMode(std::shared_ptr<EvalEnv>& env) {
     int bracketLevel = 0;
     bool inComment = false;
     std::string allInput;
-
     while (true) {
         try {
             if (bracketLevel < 0) {
@@ -83,25 +84,21 @@ void REPL::REPLMode(std::shared_ptr<EvalEnv>& env) {
             if (line == "exit") break;
             if (line.empty()) continue;
             std::cout << "\033[1A\033[K";
-            std::cout << prompt;
+            std::cout << CYAN + prompt + RESET;
             for (int i = 0; i < bracketLevel; i++) {
                 std::cout << "  ";
             }
-
             if (inComment) {
                 std::cout << colorize(line, GREEN) << std::endl;
             } else {
                 std::cout << highlight(line) << std::endl;
             }
-
             allInput += line + "\n";
-
             auto tokens = Tokenizer::tokenize(line, inComment);
             for (const auto& token : tokens) {
                 if (token->getType() == TokenType::LEFT_PAREN) bracketLevel++;
                 if (token->getType() == TokenType::RIGHT_PAREN) bracketLevel--;
             }
-
             if (!inComment && bracketLevel == 0 && !allInput.empty()) {
                 bool tempState = false;
                 auto parseTokens = Tokenizer::tokenize(allInput, tempState);
@@ -121,7 +118,7 @@ void REPL::REPLMode(std::shared_ptr<EvalEnv>& env) {
                 allInput.clear();
             }
         } catch (std::runtime_error& e) {
-            std::cout << "\033[31mError: " << e.what() << RESET << std::endl;
+            std::cout << RED << "Error: " << e.what() << RESET << std::endl;
             bracketLevel = 0;
             inComment = false;
             allInput.clear();
